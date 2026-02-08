@@ -107,13 +107,13 @@ Esempi decenti:
 ```bash
 cd Backend
 npm install
-node index.js
+npm run dev
 ```
 
 📡 Backend attivo su:
 
 ```
-http://localhost:5002
+http://localhost:5002 (il terminale si riavvierà da solo ad ogni salvataggio)
 ```
 
 ---
