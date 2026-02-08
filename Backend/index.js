@@ -12,5 +12,5 @@ const pingRoutes = require("./routes/ping");
 app.use("/", pingRoutes);
 
 // Backend/index.js
-const PORT = process.env.BACKEND_PORT || 5002;;
+const PORT = process.env.BACKEND_PORT || 5002;
 app.listen(PORT, '0.0.0.0', () => console.log(`AFSF Backend attivo su porta ${PORT}`));
