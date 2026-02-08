@@ -1,7 +1,7 @@
 # 🚀 Progetto GPO – Setup & Workflow di Sviluppo
 
 > ⚠️ **Leggi tutto prima di toccare qualsiasi cosa.**
-> Questa guida serve a configurare l’ambiente **senza distruggere il server di produzione** (sì, è già successo in altri universi paralleli).
+> Questa guida serve a configurare l’ambiente **senza distruggere il server di produzione**.
 
 ---
 
@@ -23,7 +23,7 @@ Per evitare drammi tra versioni diverse di Node, **usiamo NVM** (Node Version Ma
 
 1. Scarica `nvm-setup.exe` da qui:
    👉 [https://github.com/coreybutler/nvm-windows/releases](https://github.com/coreybutler/nvm-windows/releases)
-2. Installa NVM e apri il terminale.
+2. Installa NVM e apri il terminale Powershell.
 3. Esegui:
 
 ```bash
@@ -101,7 +101,8 @@ Esempi decenti:
 
 ---
 
-### 3.2 Avvia il Backend
+### 3.2 Avvia il Backend da terminale
+### IMPORTANTE = NON chiudere NESSUNA finestra del terminale una volta fatto partire il server
 
 ```bash
 cd Backend
@@ -117,7 +118,7 @@ http://localhost:5002
 
 ---
 
-### 3.3 Avvia il Frontend
+### 3.3 Avvia il Frontend da terminale
 
 Apri **UN ALTRO TERMINALE** (importante 👀):
 
