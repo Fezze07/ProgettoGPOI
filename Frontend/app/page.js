@@ -28,7 +28,7 @@ export default function Home() {
 
   return (
     <main style={{ padding: "40px", fontFamily: "sans-serif" }}>
-      <h1>Progetto GPO 🚀</h1>
+      <h1>Progetto GPOi 🚀</h1>
       <p>Frontend online e funzionante.</p>
       {backendMessage && <p>{backendMessage}</p>}
     </main>
