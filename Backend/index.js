@@ -1,4 +1,8 @@
-require('dotenv').config({ path: __dirname + '.env' });
+// Bootstrap del server backend Node.js/Express.
+// Carica la configurazione da env.js, registra le route da routes/stockRoutes.js e avvia il server in ascolto sulla porta configurata.
+// Punto di ingresso principale del processo backend.
+
+require('dotenv').config();
 const express = require("express");
 const cors = require("cors");
 

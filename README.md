@@ -1,167 +1,156 @@
-# 🚀 Progetto GPO – Setup & Workflow di Sviluppo
+# 🚀 Progetto GPOI – Guida per Iniziare (Setup & Sviluppo)
 
-> ⚠️ **Leggi tutto prima di toccare qualsiasi cosa.**
+Benvenuto nel progetto! Questa guida è scritta apposta per aiutarti a configurare il tuo computer e iniziare a programmare senza stress e senza il rischio di fare danni sul server principale (quello di "produzione"). 
 
-> Questa guida serve a configurare l’ambiente **senza distruggere il server di produzione**.
-
----
-
-## 🧠 Prerequisiti rapidi
-
-Prima di iniziare assicurati di avere:
-
-* Git installato
-* Un terminale decente (PowerShell, CMD, Git Bash, quello che vuoi)
+> ⚠️ **IMPORTANTE: Leggi tutto con calma prima di iniziare a fare qualsiasi cosa.**
 
 ---
 
-## 🛠️ 1. Installazione Node.js (v20 – obbligatoria)
+## 🎒 Cosa ti serve prima di iniziare (Prerequisiti)
 
-Usiamo NVM Manager per installare l'ultima versione di Node.js e Next.js
+Assicurati di avere installato sul tuo computer:
+1. **[Git](https://git-scm.com/downloads)**: Ci serve per scaricare il codice e salvare le tue modifiche.
+2. Un **Terminale**: Puoi usare PowerShell, il Prompt dei Comandi (CMD), Git Bash, oppure quello integrato in Visual Studio Code.
 
-### 🪟 Windows
+---
 
-1. Scarica `nvm-setup.exe` da qui:
-   👉 [https://github.com/coreybutler/nvm-windows/releases](https://github.com/coreybutler/nvm-windows/releases)
-2. Installa NVM e apri il terminale Powershell.
-3. Chiudi e riapri il terminale
-4. Esegui:
+## 🛠️ 1. Installare Node.js (Versione 20)
+
+Node.js è il motore che fa girare il nostro progetto. Per installarlo correttamente, useremo un programma chiamato **NVM** (Node Version Manager).
+
+### Windows:
+1. Vai a questa pagina web e scarica il file `nvm-setup.exe`: 👉 [Scarica NVM per Windows](https://github.com/coreybutler/nvm-windows/releases)
+2. Apri il file scaricato e segui l'installazione normale (clicca sempre "Avanti").
+3. Apri il tuo **Terminale** (per esempio, PowerShell).
+4. Scrivi questi due comandi (premi Invio dopo aver scritto ciascuna riga):
 
 ```bash
 nvm install 20
-nvm use 20
+nvm use 20.20.2
 ```
 
-✅ **Verifica**
-
-```bash
-node -v
-```
-
-Deve uscire qualcosa tipo: v20.x.x
-
-Se no → stop, non andare avanti.
+> **Fatto!** Ora il tuo computer è pronto per far girare il progetto.
 
 ---
 
-## 📂 2. Inizializzazione del Progetto
+## 📂 2. Scaricare il Progetto
 
-### 2.1 Clona il repository
+Ora dobbiamo prendere il codice da Internet e metterlo nel tuo computer.
+
+1. Crea una cartella vuota nel tuo computer dove vuoi salvare il progetto (ad esempio, sul Desktop o nei Documenti).
+2. Apri il **Terminale** e naviga fino a quella cartella (usando il comando `cd`), oppure fai clic col tasto destro dentro la cartella e apri il terminale lì.
+3. Scrivi questo comando per scaricare il codice:
 
 ```bash
 git clone https://github.com/Fezze07/ProgettoGPOI
+```
+4. Ora entra nella cartella appena creata del progetto:
+```bash
 cd ProgettoGPOI
 ```
-> Per praticità consiglio di spostare i file dentro la cartella ProgettoGPOI nella cartella stessa creata da te
+
 ---
 
-### 2.2 Setup Variabili d’Ambiente (.env)
+## ⚙️ 3. Configurazione per lavorare sul tuo PC (.env)
 
-Questo serve per lavorare **in locale**, senza toccare produzione.
+Il progetto ha bisogno di alcune "istruzioni segrete" per funzionare sul tuo computer senza andare a toccare la versione online. Lo facciamo usando i file di configurazione chiamati `.env`.
 
-* Crea un file nella cartella del progetto e rinominalo **.env**
-* Inserisci questi parametri:
+Devi creare **due file** di testo chiamati esattamente `.env`. 
 
-```
+**Cosa devi scriverci dentro?** In entrambi i file, copia e incolla esattamente questo testo:
+```env
 BACKEND_PORT=5002
 FRONTEND_PORT=5003
 NEXT_PUBLIC_BACKEND_URL=http://localhost:5002
 ```
 
+**Dove devi mettere questi due file appena creati?**
+1. Metti il primo file dentro la cartella `Backend`: diventerà 📁 `ProgettoGPOI/Backend/.env`
+2. Metti il secondo file dentro la cartella `Frontend`: diventerà 📁 `ProgettoGPOI/Frontend/.env`
+
 ---
-Fai **DUE COPIE IDENTICHE** del file:
 
-* 📁 `/Backend/.env`
-* 📁 `/Frontend/.env`
+## 💻 4. Iniziamo a lavorare! (Sviluppo in locale)
 
-## 💻 3. Sviluppo Locale
+### 4.1 Crea il tuo spazio di lavoro personale (Branch)
+Non lavorare mai direttamente sul codice principale! Crea sempre una "copia isolata e sicura" (chiamata branch) solo per la tua modifica:
 
-### 3.1 Crea un branch per la tua modifica
-
-1. Apri il tuo editor di codice, come **Visual Studio Code**.
-2. Dentro l'editor apri il **terminale**.
-3. Digita questo comando per creare il tuo branch personale:
+1. Apri **Visual Studio Code**.
+2. Dal menu File, fai "Apri Cartella..." e scegli la cartella `ProgettoGPOI`.
+3. Apri il terminale integrato in VS Code (dal menu in alto: `Terminale` -> `Nuovo terminale`).
+4. Scrivi questo comando per creare la tua stanza di lavoro (cambia "nome-della-tua-modifica" con qualcosa che descriva cosa farai, es: `modifica-colore-bottone`):
 
 ```bash
-git checkout -b nome-tua-modifica
+git checkout -b nome-della-tua-modifica
 ```
 
----
+### 4.2 Avvio del Backend e del Frontend
+Per vedere il sito funzionante sul tuo computer, devi far partire sia il "motore nascosto" (Backend) sia quello che si vede e con cui si interagisce (Frontend).
 
-### 3.2 Avvia il Backend e il Frontend da terminale in locale
-### IMPORTANTE: NON chiudere NESSUNA finestra del terminale una volta fatto partire il server
+**Attenzione:** Una volta avviati questi comandi, **non chiudere i terminali**, altrimenti il sito si fermerà!
 
+**Passo A: Avvia il Backend**
+Nel terminale di VS Code scrivi:
 ```bash
 cd Backend
 npm install
 npm run dev
 ```
-Apri **UN ALTRO TERMINALE** (importante 👀):
 
+**Passo B: Avvia il Frontend**
+1. Apri un **nuovo terminale** a lato del primo (c'è un tastino `+` in alto a destra nel pannello del terminale di VS Code).
+2. Nel nuovo terminale appena aperto scrivi:
 ```bash
 cd Frontend
 npm install
 npm run dev
 ```
 
-
-📡 Backend e Frontend saranno attivi su:
-
-```
-BACKEND -> http://localhost:5002
-FRONTEND -> http://localhost:5003 -> Clicca qui per vedere l'app
-```
+🎉 **Finito!** Ora aspetta qualche secondo che si carichi tutto, apri il tuo browser preferito (Chrome, Edge, ecc.) e vai a questo indirizzo:
+👉 [http://localhost:5003](http://localhost:5003)
 
 ---
 
-## 📤 4. Come Salvare le Modifiche
+## 📤 5. Come salvare e condividere il tuo fantastico lavoro
 
-### 4.1 Salva le modifiche
-Aggiungi un commento a quello che si è fatto
+Quando hai finito di fare delle modifiche, le hai testate nel tuo browser e tutto funziona perfettamente, devi salvare il tuo lavoro online condividerlo.
+
+### 5.1 Prepara e salva i tuoi file
+Apri il terminale in VS Code e scrivi in ordine:
+
+1. Aggiungi tutte le tue nuove modifiche in blocco:
 ```bash
-git commit -m "Descrizione"
+git add .
 ```
 
-> Se è il primo commit bisogna inserire anche l'email e il nome dell'utente:
+2. Associa queste modifiche a un messaggio che spiega **cosa** hai cambiato:
 ```bash
 git config --global user.email = "email@gmai.com"
 git config --global user.name = "nome"
 ```
+*(Nota: se è la primissima volta in assoluto che usi Git sul tuo pc, ti darà un errore e ti chiederà di "presentarti" inserendo la tua email e il tuo nome. Segui le istruzioni che ti suggerisce a schermo).*
 
-Questo modificherà l'origine creata da te (i file online)
-
+3. Carica finalmente il tuo pacchetto di lavoro su Internet:
 ```bash
-git push origin nome-tua-modifica
+git push origin nome-della-tua-modifica
 ```
 
----
+### 5.2 Unire il tuo lavoro a quello di tutti (Pull Request)
+Ora che il tuo lavoro è online, devi chiedere agli amministratori del progetto di approvarlo e unirlo al progetto principale.
 
-### 4.2 Pull Request
-
-Per mandare i file in produzione bisogna creare una **Pull Request**
-
-1. Vai su GitHub
-2. Apri una **Pull Request** verso `main`
-3. Il codice verrà revisionato
-4. Se approvato → merge
-5. 🚀 Il server si aggiorna **automaticamente**
-
-Tu non devi fare altro.
+1. Vai sulla pagina GitHub del progetto: [https://github.com/Fezze07/ProgettoGPOI](https://github.com/Fezze07/ProgettoGPOI)
+2. Vedrai in alto un grosso pulsante verde che dice **"Compare & pull request"**. Cliccalo!
+3. Scrivi un titolo chiaro e poi clicca in fondo su **"Create pull request"**.
+4. Ottimo lavoro! Ora il tuo codice verrà controllato. Se va bene, verrà unito al progetto principale e lo vedranno tutti! 🚀
 
 ---
 
-## 🚫 Regole d’Oro
+## 🚫 3 Regole d'Oro da NON dimenticare mai!
 
-* ❌ **NON lavorare MAI sul branch `main`**
-  * Crea un branch solo per te
-  * Usalo fino a quando non viene completato il merge
-* 🔄 Prima di lavorare:
-
+* ❌ **1. NON lavorare MAI direttamente sul codice condiviso (chiamato branch `main`)**. Crea sempre il tuo branch personale con `git checkout -b`.
+* 🔄 **2. Aggiorna sempre il tuo computer** prima di iniziare a lavorare un nuovo giorno, per avere l'ultima versione del lavoro di tutti gli altri:
   ```bash
+  git checkout main
   git pull origin main
   ```
-* 🧹 **NON** pushare:
-
-  * `node_modules/`
-  * `.next/`
-    *(sono già nel `.gitignore`, se li vedi pushati → qualcosa non va)*
+* 🧹 **3. Non caricare mai cartelle pesanti di sistema**: Fai attenzione a non caricare mai online (fare push) le cartelle `node_modules/` o `.next/`. Normalmente il sistema le ignora in automatico, ma se le vedi su GitHub c'è un piccolo problema!

@@ -1,3 +1,7 @@
+// Homepage principale dell'applicazione (route "/").
+// Compone il layout con i componenti Header, StockCard e StockChart.
+// Utilizza l'hook useStockData per ottenere i dati e gestirne gli stati (loading, error, data).
+
 "use client";
 import { useEffect, useState } from "react";
 
@@ -11,13 +15,13 @@ export default function Home() {
       try {
         const res = await fetch(`${backendUrl}/ping`);
         if (!res.ok) {
-        const errorText = await res.text();
-        console.log("Errore Raw dal server:", errorText);
-        setBackendMessage(`Il server ha risposto con errore ${res.status}: ${errorText.substring(0, 100)}...`);
-        return;
-      }
+          const errorText = await res.text();
+          console.log("Errore Raw dal server:", errorText);
+          setBackendMessage(`Il server ha risposto con errore ${res.status}: ${errorText.substring(0, 100)}...`);
+          return;
+        }
 
-      const data = await res.json();
+        const data = await res.json();
         setBackendMessage(`Backend dice: ${JSON.stringify(data)}`);
       } catch (err) {
         setBackendMessage(`Errore nella chiamata al backend: ${err.message}`);
