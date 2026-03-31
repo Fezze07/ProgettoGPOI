@@ -13,7 +13,7 @@ app.use(express.json());
 // Rotte
 const pingRoutes = require("./routes/ping");
 
-app.use("/", pingRoutes);
+app.use("/api", pingRoutes);
 
 // Backend/index.js
 const PORT = process.env.BACKEND_PORT;
