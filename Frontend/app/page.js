@@ -13,7 +13,6 @@ export default function Home() {
   useEffect(() => {
     async function checkBackend() {
       try {
-        console.log(backendUrl);
         const res = await fetch(`${backendUrl}/ping`);
         if (!res.ok) {
           const errorText = await res.text();
