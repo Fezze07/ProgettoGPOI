@@ -1,0 +1,51 @@
+.panel {
+  background-color: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 1rem;
+  padding: 1.5rem;
+}
+
+.title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #f8fafc;
+  margin-bottom: 1rem;
+}
+
+.loader, .empty {
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.item {
+  padding: 0.5rem 0.75rem;
+  background-color: #0f172a;
+  border-radius: 0.5rem;
+  border: 1px solid #334155;
+}
+
+.symbol {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #60a5fa;
+}
+
+.link {
+  display: block;
+  margin-top: 1rem;
+  font-size: 0.8rem;
+  color: #3b82f6;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.link:hover {
+  color: #60a5fa;
+}
