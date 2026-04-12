@@ -43,19 +43,15 @@ export default function SideNavBar() {
 
       <div className="mt-auto px-3 space-y-2 border-t border-white/5 pt-6">
         <div className="px-4 py-3 glass-panel rounded-xl mb-4">
-          <p className="text-xs text-slate-400 font-bold mb-2">QUICK TRADE</p>
-          <button className="w-full bg-[#0df259] text-[#00390e] py-2.5 rounded-full font-bold text-sm shadow-[0_0_20px_rgba(13,242,89,0.2)] active:scale-95 transition-transform">
-            Trade Now
-          </button>
+          <p className="text-xs text-slate-400 font-bold mb-2">PREMIUM ACCESS</p>
+          <Link href="/pricing" className="block text-center w-full bg-surface-container hover:bg-surface-container-high border border-[#0df259]/30 text-[#0df259] py-2.5 rounded-full font-bold text-sm shadow-[0_0_20px_rgba(13,242,89,0.1)] active:scale-95 transition-all">
+            Vedi Piani
+          </Link>
         </div>
-        <a className="flex items-center px-3 py-2 text-slate-400 font-medium hover:text-[#e1e2e8] transition-colors" href="#">
-          <span className="material-symbols-outlined mr-3 text-sm">help_outline</span>
-          <span className="text-sm">Support</span>
-        </a>
-        <a className="flex items-center px-3 py-2 text-slate-400 font-medium hover:text-[#e1e2e8] transition-colors" href="#">
+        <Link className="flex items-center px-3 py-2 text-slate-400 font-medium hover:text-[#e1e2e8] transition-colors" href="/login">
           <span className="material-symbols-outlined mr-3 text-sm">person</span>
-          <span className="text-sm">Account</span>
-        </a>
+          <span className="text-sm">Accedi</span>
+        </Link>
       </div>
     </aside>
   );

@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 
 export default function TopNavBar() {
   return (
@@ -19,15 +20,16 @@ export default function TopNavBar() {
           <span className="text-primary-container font-bold text-xs">Mercato Aperto</span>
         </div>
         <div className="flex items-center space-x-4 border-l border-white/10 pl-6">
-          <button className="text-slate-400 hover:text-[#0df259] transition-colors active:scale-95">
+          <button className="text-slate-400 hover:text-[#0df259] transition-colors active:scale-95 hidden sm:block">
             <span className="material-symbols-outlined">notifications</span>
           </button>
-          <button className="text-slate-400 hover:text-[#0df259] transition-colors active:scale-95">
-            <span className="material-symbols-outlined">grid_view</span>
-          </button>
-          <button className="bg-[#0df259] text-[#00390e] px-4 py-1.5 rounded-full font-bold text-xs shadow-[0_4px_40px_rgba(13,242,89,0.04)] active:scale-95 transition-transform">
-            Connect Wallet
-          </button>
+          
+          <Link href="/login" className="text-slate-300 font-bold text-xs hover:text-[#0df259] transition-colors pr-2">
+            Accedi
+          </Link>
+          <Link href="/register" className="bg-[#0df259] hover:bg-[#6dff7e] text-[#00390e] px-4 py-1.5 rounded-full font-bold text-xs shadow-[0_4px_40px_rgba(13,242,89,0.2)] active:scale-95 transition-all min-w-max">
+            Registrati
+          </Link>
         </div>
       </div>
     </header>
