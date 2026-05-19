@@ -1,7 +1,6 @@
 "use client";
 import React, { useState } from "react";
 import Link from "next/link";
-import { supabase } from "../../utils/supabase";
 import { useRouter } from "next/navigation";
 
 export default function RegisterPage() {
@@ -21,22 +20,26 @@ export default function RegisterPage() {
     }
     setLoading(true);
     setError(null);
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: fullName,
-        }
-      }
-    });
-    setLoading(false);
-    if (error) {
-      setError(error.message);
-    } else {
-      router.push("/portfolio");
+
+    const response = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({ fullName, email, password, confirmPassword }),
+    })
+
+    setLoading(false)
+
+    if (!response.ok) {
+      const data = await response.json()
+      setError(data?.error || "Errore durante la registrazione.")
+      return
     }
-  };
+
+    router.push("/portfolio")
+  }
 
   const handleGoogleSignup = async () => {
     const { error } = await supabase.auth.signInWithOAuth({

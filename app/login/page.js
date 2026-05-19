@@ -1,7 +1,6 @@
 "use client";
 import React, { useState } from "react";
 import Link from "next/link";
-import { supabase } from "../../utils/supabase";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
@@ -15,17 +14,26 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    setLoading(false);
-    if (error) {
-      setError(error.message);
-    } else {
-      router.push("/portfolio");
+
+    const response = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({ email, password }),
+    })
+
+    setLoading(false)
+
+    if (!response.ok) {
+      const data = await response.json()
+      setError(data?.error || "Errore durante l'accesso.")
+      return
     }
-  };
+
+    router.push("/portfolio")
+  }
 
   const handleGoogleLogin = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
@@ -48,7 +56,7 @@ export default function LoginPage() {
             <div className="mb-4 inline-flex items-center justify-center w-14 h-14 rounded-xl bg-surface-container-high border border-outline-variant/20 shadow-inner">
               <span className="material-symbols-outlined text-primary-container text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>insights</span>
             </div>
-            <h1 className="text-on-surface font-extrabold text-3xl tracking-tight mb-2">Bentornato su GPO</h1>
+            <h1 className="text-on-surface font-extrabold text-3xl tracking-tight mb-2">Bentornato su GPOI</h1>
             <p className="text-on-surface-variant/60 font-semibold tracking-[0.15em] uppercase text-[11px]">Institutional Terminal</p>
           </div>
 

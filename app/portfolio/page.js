@@ -1,7 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
 import GPOPageShell from "../../components/GPOPageShell";
-import { supabase } from "../../utils/supabase";
 
 export default function PortfolioPage() {
   const [portfolios, setPortfolios] = useState([]);
@@ -13,41 +12,36 @@ export default function PortfolioPage() {
 
   useEffect(() => {
     async function init() {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
+      setLoading(true)
+      const authRes = await fetch('/api/auth/me', {
+        method: 'GET',
+        credentials: 'include',
+      })
 
-      if (user) {
-        // Load portfolios
-        const { data: pData } = await supabase
-          .from("portfolios")
-          .select("*")
-          .eq("user_id", user.id);
-        setPortfolios(pData || []);
+      if (!authRes.ok) {
+        setLoading(false)
+        return
+      }
 
-        if (pData && pData.length > 0) {
-          const portfolioIds = pData.map((p) => p.id);
+      const authData = await authRes.json()
+      setUser(authData.user)
 
-          // Load holdings
-          const { data: hData } = await supabase
-            .from("holdings")
-            .select("*")
-            .in("portfolio_id", portfolioIds);
-          setHoldings(hData || []);
-
-          // Load transactions
-          const { data: tData } = await supabase
-            .from("transactions")
-            .select("*")
-            .in("portfolio_id", portfolioIds)
-            .order("executed_at", { ascending: false })
-            .limit(20);
-          setTransactions(tData || []);
+      if (authData.user) {
+        const portfolioRes = await fetch('/api/private/portfolio', {
+          method: 'GET',
+          credentials: 'include',
+        })
+        if (portfolioRes.ok) {
+          const portfolioData = await portfolioRes.json()
+          setPortfolios(portfolioData.portfolios || [])
+          setHoldings(portfolioData.holdings || [])
+          setTransactions(portfolioData.transactions || [])
         }
       }
-      setLoading(false);
+      setLoading(false)
     }
-    init();
-  }, []);
+    init()
+  }, [])
 
   const totalInvested = holdings.reduce((sum, h) => sum + h.quantity * h.avg_buy_price, 0);
 
