@@ -1,14 +1,22 @@
 "use client";
-import { useState, useEffect } from "react";
-import GPOPageShell from "../../components/GPOPageShell";
-import { supabase } from "../../utils/supabase";
+import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
+import Link from "next/link";
+import GPOPageShell from "@/core/components/GPOPageShell";
+import { supabase } from "@/core/supabase/supabase";
+
 
 export default function WatchlistPage() {
+  const searchParams = useSearchParams();
+  const initialQuery = searchParams.get("query") || "";
+
   const [watchlist, setWatchlist] = useState([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(initialQuery);
   const [searchResults, setSearchResults] = useState([]);
+  const [activeFilter, setActiveFilter] = useState("Tutti");
+  const searchInputRef = useRef(null);
 
   useEffect(() => {
     async function init() {
@@ -25,9 +33,13 @@ export default function WatchlistPage() {
         if (!error) setWatchlist(data || []);
       }
       setLoading(false);
+
+      if (initialQuery) {
+        handleSearch({ target: { value: initialQuery } });
+      }
     }
     init();
-  }, []);
+  }, [initialQuery]);
 
   const mockWatchlist = [
     { sym: 'TSLA', name: 'Tesla, Inc.', icon: 'TS', px: '$175.34', chg: '+0.42%', up: true, sector: 'Technology' },
@@ -84,7 +96,10 @@ export default function WatchlistPage() {
           </div>
           <p className="text-on-surface-variant text-lg font-light">Monitora i tuoi titoli preferiti in tempo reale</p>
         </div>
-        <button className="bg-primary-container text-on-primary font-bold px-6 py-3 rounded-full flex items-center gap-2 hover:shadow-[0_0_20px_rgba(13,242,89,0.3)] transition-all active:scale-95 group">
+        <button 
+          className="bg-primary-container text-on-primary font-bold px-6 py-3 rounded-full flex items-center gap-2 hover:shadow-[0_0_20px_rgba(13,242,89,0.3)] transition-all active:scale-95 group"
+          onClick={() => searchInputRef.current?.focus()}
+        >
           <span className="material-symbols-outlined group-hover:rotate-90 transition-transform">add</span>
           + Aggiungi Titolo
         </button>
@@ -94,6 +109,7 @@ export default function WatchlistPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center relative">
         <div className="lg:col-span-7 relative z-20">
           <input
+            ref={searchInputRef}
             className="glass-panel w-full pl-14 pr-6 py-4 rounded-full border border-outline-variant/10 focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container/50 outline-none text-on-surface placeholder:text-on-surface-variant/50"
             placeholder="Cerca simbolo o nome azienda..."
             type="text"
@@ -117,10 +133,15 @@ export default function WatchlistPage() {
           )}
         </div>
         <div className="lg:col-span-5 flex items-center justify-end gap-2 overflow-x-auto pb-2 lg:pb-0">
-          <button className="px-6 py-2 rounded-full bg-primary-container/10 text-primary-container font-bold border border-primary-container/20">Tutti</button>
-          <button className="px-6 py-2 rounded-full text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/30 transition-all font-medium">Azioni</button>
-          <button className="px-6 py-2 rounded-full text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/30 transition-all font-medium">ETF</button>
-          <button className="px-6 py-2 rounded-full text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/30 transition-all font-medium">Crypto</button>
+          {["Tutti", "Azioni", "ETF", "Crypto"].map(f => (
+            <button 
+              key={f}
+              onClick={() => setActiveFilter(f)}
+              className={`px-6 py-2 rounded-full font-medium transition-all ${activeFilter === f ? 'bg-primary-container/10 text-primary-container font-bold border border-primary-container/20' : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/30'}`}
+            >
+              {f}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -137,7 +158,7 @@ export default function WatchlistPage() {
             </div>
           </div>
           <div className="flex items-center gap-3 relative z-10 w-full md:w-auto">
-            <button className="flex-1 md:flex-none px-8 py-3 bg-primary-container text-on-primary font-bold rounded-full hover:shadow-lg transition-all">Accedi</button>
+            <Link href="/login" className="flex-1 md:flex-none px-8 py-3 bg-primary-container text-on-primary text-center font-bold rounded-full hover:shadow-lg transition-all">Accedi</Link>
           </div>
         </div>
       )}

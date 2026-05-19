@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server'
-import { registerSchema } from '../../../../utils/validators'
-import { createUser, createSession } from '../../../../services/authService'
-import { buildJsonResponse, setAuthCookies } from '../../../../utils/response'
-import { handleApiError } from '../../../../utils/errors'
+import { registerSchema } from '@/features/auth/validators'
+import { createUser, createSession } from '@/features/auth/auth.server'
+import { buildJsonResponse, setAuthCookies } from '@/core/utils/response.server'
+import { handleApiError } from '@/core/utils/errors.server'
+
 
 export async function POST(request) {
   try {

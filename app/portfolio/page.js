@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
-import GPOPageShell from "../../components/GPOPageShell";
+import GPOPageShell from "@/core/components/GPOPageShell";
+
 
 export default function PortfolioPage() {
   const [portfolios, setPortfolios] = useState([]);

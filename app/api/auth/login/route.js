@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server'
-import { loginSchema } from '../../../../utils/validators'
-import { validateCredentials, createSession } from '../../../../services/authService'
-import { rateLimitAuth } from '../../../../utils/rateLimiter'
-import { buildJsonResponse, setAuthCookies } from '../../../../utils/response'
-import { handleApiError } from '../../../../utils/errors'
+import { loginSchema } from '@/features/auth/validators'
+import { validateCredentials, createSession } from '@/features/auth/auth.server'
+import { rateLimitAuth } from '@/core/utils/rateLimiter.server'
+import { buildJsonResponse, setAuthCookies } from '@/core/utils/response.server'
+import { handleApiError } from '@/core/utils/errors.server'
+
 
 export async function POST(request) {
   try {

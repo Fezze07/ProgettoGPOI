@@ -1,4 +1,5 @@
-import { supabase } from '../utils/supabase';
+import { supabase } from '@/core/supabase/supabase';
+
 
 /**
  * Recupera l'elenco di tutti gli strumenti finanziari disponibili.

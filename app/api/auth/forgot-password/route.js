@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server'
-import { forgotPasswordSchema } from '../../../../utils/validators'
-import { createPasswordResetToken } from '../../../../services/authService'
-import { buildJsonResponse } from '../../../../utils/response'
-import { handleApiError } from '../../../../utils/errors'
+import { forgotPasswordSchema } from '@/features/auth/validators'
+import { createPasswordResetToken } from '@/features/auth/auth.server'
+import { buildJsonResponse } from '@/core/utils/response.server'
+import { handleApiError } from '@/core/utils/errors.server'
+
 
 const buildResetUrl = (token) => {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:5003'

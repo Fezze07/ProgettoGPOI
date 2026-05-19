@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server'
-import { getRefreshTokenFromRequest } from '../../../../utils/cookies'
-import { rotateRefreshToken } from '../../../../services/authService'
-import { setAuthCookies, buildJsonResponse } from '../../../../utils/response'
-import { handleApiError } from '../../../../utils/errors'
+import { getRefreshTokenFromRequest } from '@/features/auth/utils/cookies.server'
+import { rotateRefreshToken } from '@/features/auth/auth.server'
+import { setAuthCookies, buildJsonResponse } from '@/core/utils/response.server'
+import { handleApiError } from '@/core/utils/errors.server'
+
 
 export async function POST(request) {
   try {

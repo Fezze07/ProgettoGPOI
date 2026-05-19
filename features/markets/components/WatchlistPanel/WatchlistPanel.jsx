@@ -1,6 +1,8 @@
 "use client";
 import { useState, useEffect } from "react";
-import { supabase } from "../../utils/supabase";
+import { supabase } from "@/core/supabase/supabase";
+
+
 import styles from "./WatchlistPanel.module.css";
 
 /**

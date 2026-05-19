@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { normalizeEmail, sanitizeString } from './security'
+import { normalizeEmail, sanitizeString } from '@/core/utils/security.server'
 
 const emailSchema = z.string().trim().email({ message: 'Email non valida.' }).transform(normalizeEmail)
 const passwordSchema = z

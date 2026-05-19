@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
-import { getCookieMaxAge } from './security'
+import { getCookieMaxAge } from './security.server'
+
+
 
 const secureFlag = process.env.NODE_ENV === 'production'
 

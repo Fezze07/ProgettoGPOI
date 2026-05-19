@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server'
-import { resetPasswordSchema } from '../../../../utils/validators'
-import { resetPassword } from '../../../../services/authService'
-import { buildJsonResponse } from '../../../../utils/response'
-import { handleApiError } from '../../../../utils/errors'
+import { resetPasswordSchema } from '@/features/auth/validators'
+import { resetPassword } from '@/features/auth/auth.server'
+import { buildJsonResponse } from '@/core/utils/response.server'
+import { handleApiError } from '@/core/utils/errors.server'
+
 
 export async function POST(request) {
   try {

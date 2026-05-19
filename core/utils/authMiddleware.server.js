@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
-import { verifyAccessToken } from '../utils/authTokens'
-import { ApiError } from '../utils/errors'
-import { supabaseServer } from '../utils/supabaseServer'
+import { verifyAccessToken } from '@/features/auth/utils/authTokens.server'
+import { ApiError } from '@/core/utils/errors.server'
+import { supabaseServer } from '@/core/supabase/supabaseServer.server'
+
 
 const AUTH_HEADER = 'authorization'
 

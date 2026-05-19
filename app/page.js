@@ -1,9 +1,13 @@
 "use client";
-import GPOPageShell from "../components/GPOPageShell";
-import { useStockData } from "../hooks/useStockData";
+import GPOPageShell from "@/core/components/GPOPageShell";
+import { useStockData } from "@/features/markets/hooks/useStockData";
+
+import { useState } from "react";
+import Link from "next/link";
 
 export default function Home() {
   const { data: instruments, loading, error } = useStockData();
+  const [timeframe, setTimeframe] = useState("1M");
 
   return (
     <GPOPageShell>
@@ -112,11 +116,15 @@ export default function Home() {
               <p className="text-slate-400 text-sm">Panoramica asset complessiva</p>
             </div>
             <div className="flex space-x-2 bg-surface-container-lowest p-1 rounded-full border border-white/5">
-              <button className="px-4 py-1.5 text-xs font-bold rounded-full text-slate-400 hover:text-on-surface transition-colors">1G</button>
-              <button className="px-4 py-1.5 text-xs font-bold rounded-full text-slate-400 hover:text-on-surface transition-colors">1S</button>
-              <button className="px-4 py-1.5 text-xs font-bold rounded-full bg-primary-container text-[#00390e]">1M</button>
-              <button className="px-4 py-1.5 text-xs font-bold rounded-full text-slate-400 hover:text-on-surface transition-colors">3M</button>
-              <button className="px-4 py-1.5 text-xs font-bold rounded-full text-slate-400 hover:text-on-surface transition-colors">1A</button>
+              {['1G', '1S', '1M', '3M', '1A'].map(tf => (
+                <button 
+                  key={tf}
+                  onClick={() => setTimeframe(tf)}
+                  className={`px-4 py-1.5 text-xs font-bold rounded-full transition-colors ${timeframe === tf ? 'bg-primary-container text-[#00390e]' : 'text-slate-400 hover:text-on-surface'}`}
+                >
+                  {tf}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -166,7 +174,12 @@ export default function Home() {
         <div className="col-span-3 glass-panel rounded-xl p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-lg font-bold tracking-tight">La tua Watchlist</h2>
-            <button className="material-symbols-outlined text-slate-500 hover:text-on-surface">more_vert</button>
+            <button 
+              className="material-symbols-outlined text-slate-500 hover:text-on-surface"
+              onClick={() => alert("Impostazioni Watchlist")}
+            >
+              more_vert
+            </button>
           </div>
 
           <div className="space-y-5">
@@ -197,9 +210,9 @@ export default function Home() {
             ))}
           </div>
 
-          <button className="w-full mt-8 border border-white/10 rounded-xl py-3 text-sm font-bold text-slate-400 hover:bg-surface-container-high transition-colors">
+          <Link href="/watchlist" className="block text-center w-full mt-8 border border-white/10 rounded-xl py-3 text-sm font-bold text-slate-400 hover:bg-surface-container-high transition-colors">
             Visualizza Tutti
-          </button>
+          </Link>
         </div>
       </div>
 

@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server'
-import { getAuthenticatedUser } from '../../../../middlewares/authMiddleware'
-import { profileUpdateSchema } from '../../../../utils/validators'
-import { supabaseServer } from '../../../../utils/supabaseServer'
-import { buildJsonResponse } from '../../../../utils/response'
-import { handleApiError } from '../../../../utils/errors'
-import { hashPassword } from '../../../../utils/authTokens'
+import { getAuthenticatedUser } from '@/core/utils/authMiddleware.server'
+import { profileUpdateSchema } from '@/features/auth/validators'
+import { supabaseServer } from '@/core/supabase/supabaseServer.server'
+import { buildJsonResponse } from '@/core/utils/response.server'
+import { handleApiError } from '@/core/utils/errors.server'
+import { hashPassword } from '@/features/auth/utils/authTokens.server'
+
 
 export async function GET(request) {
   try {

@@ -1,7 +1,8 @@
-import { supabaseServer } from '../utils/supabaseServer'
-import { hashPassword, verifyPassword, createRefreshToken, hashToken, createAccessToken } from '../utils/authTokens'
-import { ApiError } from '../utils/errors'
-import { getCookieMaxAge } from '../utils/security'
+import { supabaseServer } from '@/core/supabase/supabaseServer.server'
+import { hashPassword, verifyPassword, createRefreshToken, hashToken, createAccessToken } from '@/features/auth/utils/authTokens.server'
+import { ApiError } from '@/core/utils/errors.server'
+import { getCookieMaxAge } from '@/core/utils/security.server'
+
 
 const refreshTokenTtlSeconds = getCookieMaxAge(process.env.JWT_REFRESH_TOKEN_EXPIRES_IN, 60 * 60 * 24 * 7)
 const passwordResetTtlSeconds = getCookieMaxAge(process.env.PASSWORD_RESET_TOKEN_EXPIRES_IN, 60 * 60)

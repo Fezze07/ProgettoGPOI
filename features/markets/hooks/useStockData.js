@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { getInstruments } from '../services/stockService';
+import { getInstruments } from '@/features/markets/services/stockService';
+
 
 /**
  * Hook per caricare l'elenco dei titoli disponibili e gestire gli stati di caricamento.

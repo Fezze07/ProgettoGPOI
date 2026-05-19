@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server'
-import { clearAuthCookies } from '../../../../utils/response'
-import { getRefreshTokenFromRequest } from '../../../../utils/cookies'
-import { revokeRefreshToken } from '../../../../services/authService'
-import { handleApiError } from '../../../../utils/errors'
+import { clearAuthCookies } from '@/core/utils/response.server'
+import { getRefreshTokenFromRequest } from '@/features/auth/utils/cookies.server'
+import { revokeRefreshToken } from '@/features/auth/auth.server'
+import { handleApiError } from '@/core/utils/errors.server'
+
 
 export async function POST(request) {
   try {

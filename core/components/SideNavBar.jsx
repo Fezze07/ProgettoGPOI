@@ -9,7 +9,7 @@ export default function SideNavBar() {
     { name: 'Dashboard', path: '/', icon: 'dashboard' },
     { name: 'Watchlist', path: '/watchlist', icon: 'visibility' },
     { name: 'Portfolio', path: '/portfolio', icon: 'account_balance_wallet' },
-    { name: 'Markets', path: '#', icon: 'monitoring' },
+    { name: 'Markets', path: '/markets', icon: 'monitoring' },
   ];
 
   return (
