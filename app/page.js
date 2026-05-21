@@ -1,27 +1,46 @@
-"use client";
+﻿"use client";
 import GPOPageShell from "@/core/components/GPOPageShell";
 import { useStockData } from "@/features/markets/hooks/useStockData";
+import { getLatestPrices, getPriceHistory } from "@/features/markets/services/stockService";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 
 export default function Home() {
-  const { data: instruments, loading, error } = useStockData();
-  const [timeframe, setTimeframe] = useState("1M");
-
-  const [user, setUser] = useState(null);
+  const { data: instruments } = useStockData();
   const [portfolioStats, setPortfolioStats] = useState({ totalInvested: 0, totalValue: 0, totalReturnVal: 0, openPositions: 0 });
   const [watchlist, setWatchlist] = useState([]);
+  const [prices, setPrices] = useState({});
+  const [selectedSymbol, setSelectedSymbol] = useState("");
+  const [chartData, setChartData] = useState([]);
+  const [chartLoading, setChartLoading] = useState(false);
+
+  useEffect(() => {
+    if (!selectedSymbol && instruments?.length > 0) {
+      setSelectedSymbol(instruments[0].symbol);
+    }
+  }, [selectedSymbol, instruments]);
+
+  useEffect(() => {
+    async function loadChart() {
+      if (!selectedSymbol) return;
+      setChartLoading(true);
+      const history = await getPriceHistory(selectedSymbol);
+      setChartData(history.slice(-18));
+      setChartLoading(false);
+    }
+    loadChart();
+  }, [selectedSymbol]);
 
   useEffect(() => {
     async function init() {
       const authRes = await fetch('/api/auth/me', { method: 'GET', credentials: 'include' });
-      if (!authRes.ok) return;
-      const authData = await authRes.json();
-      setUser(authData.user);
+      if (!authRes.ok) {
+        return;
+      }
 
+      const authData = await authRes.json();
       if (authData.user) {
-        // Fetch Portfolio
         const portfolioRes = await fetch('/api/private/portfolio', { method: 'GET', credentials: 'include' });
         if (portfolioRes.ok) {
           const { holdings } = await portfolioRes.json();
@@ -32,303 +51,211 @@ export default function Home() {
             totalInvested: tInv,
             totalValue: tVal,
             totalReturnVal: tVal - tInv,
-            openPositions: hList.length
+            openPositions: hList.length,
           });
         }
 
-        // Fetch Watchlist
         const { supabase } = await import("@/core/supabase/supabase");
-        const { data } = await supabase.from("watchlists").select("*").eq("user_id", authData.user.id).order("added_at", { ascending: false }).limit(5);
+        const { data } = await supabase
+          .from("watchlists")
+          .select("*")
+          .eq("user_id", authData.user.id)
+          .order("added_at", { ascending: false })
+          .limit(5);
+
         if (data && data.length > 0) {
-          const symbols = data.map(w => w.symbol);
-          const { data: prices } = await supabase.from('latest_crypto_prices').select('*').in('symbol', symbols);
+          const symbols = data.map((w) => w.symbol);
+          const latestPrices = await getLatestPrices(symbols);
           const priceMap = {};
-          if (prices) prices.forEach(p => { priceMap[p.symbol] = p; });
-          
-          setWatchlist(data.map(w => {
-            const p = priceMap[w.symbol] || {};
-            return {
-              sym: w.symbol,
-              name: w.symbol,
-              icon: w.symbol.substring(0, 2).toUpperCase(),
-              px: p.price ? `$${Number(p.price).toFixed(2)}` : '-',
-              chg: p.percent_change_24h !== undefined && p.percent_change_24h !== null ? `${p.percent_change_24h >= 0 ? '+' : ''}${Number(p.percent_change_24h).toFixed(2)}%` : '-',
-              up: (p.percent_change_24h || 0) >= 0
-            };
-          }));
+          latestPrices.forEach((row) => {
+            priceMap[row.symbol] = row;
+          });
+
+          setWatchlist(
+            data.map((w) => {
+              const row = priceMap[w.symbol] || {};
+              return {
+                sym: w.symbol,
+                name: w.symbol,
+                icon: w.symbol.substring(0, 2).toUpperCase(),
+                px: row.price != null ? `$${Number(row.price).toFixed(2)}` : '-',
+                chg: row.price_date ? new Date(row.price_date).toLocaleDateString('it-IT') : '-',
+                up: false,
+              };
+            })
+          );
+          setPrices(priceMap);
         }
       }
     }
     init();
   }, []);
 
+  useEffect(() => {
+    async function loadFeaturedPrices() {
+      if (!instruments || instruments.length === 0) return;
+      const symbols = instruments.slice(0, 4).map((item) => item.symbol);
+      if (symbols.length === 0) return;
+      const latestPrices = await getLatestPrices(symbols);
+      const priceMap = {};
+      latestPrices.forEach((row) => {
+        priceMap[row.symbol] = row;
+      });
+      setPrices((prev) => ({ ...prev, ...priceMap }));
+    }
+    loadFeaturedPrices();
+  }, [instruments]);
+
+  const featuredItems = useMemo(
+    () =>
+      (instruments || []).slice(0, 4).map((instrument) => {
+        const latest = prices[instrument.symbol];
+        return {
+          symbol: instrument.symbol,
+          name: instrument.name || instrument.symbol,
+          exchange: instrument.exchange || 'Mercato',
+          price: latest?.price != null ? `$${Number(latest.price).toFixed(2)}` : '-',
+          updatedAt: latest?.price_date || null,
+        };
+      }),
+    [instruments, prices]
+  );
+
+  const selectedSeries = chartData.length > 1 ? chartData : [];
+  const minPrice = selectedSeries.length ? Math.min(...selectedSeries.map((item) => Number(item.price))) : 0;
+  const maxPrice = selectedSeries.length ? Math.max(...selectedSeries.map((item) => Number(item.price))) : 0;
+  const priceChange = selectedSeries.length > 1 ? Number(selectedSeries[selectedSeries.length - 1].price) - Number(selectedSeries[0].price) : 0;
+  const priceChangePct = selectedSeries.length > 1 && selectedSeries[0].price ? (priceChange / Number(selectedSeries[0].price)) * 100 : 0;
+
+  const chartPath = selectedSeries
+    .map((point, index) => {
+      const x = (index / Math.max(selectedSeries.length - 1, 1)) * 1000;
+      const priceValue = Number(point.price);
+      const y = maxPrice === minPrice ? 220 : 320 - ((priceValue - minPrice) / (maxPrice - minPrice)) * 220;
+      return `${index === 0 ? 'M' : 'L'}${x},${y}`;
+    })
+    .join(' ');
+
   return (
     <GPOPageShell>
-      {/* Ticker Row */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {/* AAPL */}
-        <div className="glass-panel p-5 rounded-xl border-l-4 border-primary-container">
-          <div className="flex justify-between items-start mb-2">
-            <div>
-              <p className="text-slate-400 text-xs font-bold uppercase tracking-tight">Apple Inc.</p>
-              <h3 className="text-lg font-extrabold">AAPL</h3>
-            </div>
-            <span className="px-2 py-1 bg-primary-container/10 text-primary-container rounded-full text-[10px] font-bold">+1.2%</span>
+      <div className="grid gap-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <p className="text-sm uppercase tracking-[0.25em] text-on-surface-variant mb-2">Dashboard</p>
+            <h1 className="text-4xl font-extrabold tracking-tight text-on-surface">Panoramica</h1>
           </div>
-          <div className="flex items-end justify-between">
-            <span className="text-2xl font-bold tracking-tighter">$182.63</span>
-            <div className="h-8 w-20 flex items-end">
-              <div className="flex items-end space-x-0.5 h-full w-full">
-                <div className="w-1 bg-primary-container/20 h-1/2"></div>
-                <div className="w-1 bg-primary-container/20 h-2/3"></div>
-                <div className="w-1 bg-primary-container/40 h-1/3"></div>
-                <div className="w-1 bg-primary-container/60 h-3/4"></div>
-                <div className="w-1 bg-primary-container h-full"></div>
-              </div>
-            </div>
-          </div>
+          <div className="text-sm text-on-surface-variant">Ultimo aggiornamento dati reale da Supabase</div>
         </div>
 
-        {/* MSFT */}
-        <div className="glass-panel p-5 rounded-xl border-l-4 border-tertiary-container/40">
-          <div className="flex justify-between items-start mb-2">
-            <div>
-              <p className="text-slate-400 text-xs font-bold uppercase tracking-tight">Microsoft</p>
-              <h3 className="text-lg font-extrabold">MSFT</h3>
-            </div>
-            <span className="px-2 py-1 bg-tertiary-container/10 text-tertiary-container rounded-full text-[10px] font-bold">-0.4%</span>
-          </div>
-          <div className="flex items-end justify-between">
-            <span className="text-2xl font-bold tracking-tighter">$406.32</span>
-            <div className="h-8 w-20 flex items-end">
-              <div className="flex items-end space-x-0.5 h-full w-full">
-                <div className="w-1 bg-tertiary-container/60 h-full"></div>
-                <div className="w-1 bg-tertiary-container/40 h-3/4"></div>
-                <div className="w-1 bg-tertiary-container/20 h-1/2"></div>
-                <div className="w-1 bg-tertiary-container/30 h-1/3"></div>
-                <div className="w-1 bg-tertiary-container/20 h-1/4"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* BTC */}
-        <div className="glass-panel p-5 rounded-xl border-l-4 border-primary-container">
-          <div className="flex justify-between items-start mb-2">
-            <div>
-              <p className="text-slate-400 text-xs font-bold uppercase tracking-tight">Bitcoin</p>
-              <h3 className="text-lg font-extrabold">BTC</h3>
-            </div>
-            <span className="px-2 py-1 bg-primary-container/10 text-primary-container rounded-full text-[10px] font-bold">+3.1%</span>
-          </div>
-          <div className="flex items-end justify-between">
-            <span className="text-2xl font-bold tracking-tighter">$67,294.0</span>
-            <div className="h-8 w-20 flex items-end">
-              <div className="flex items-end space-x-0.5 h-full w-full">
-                <div className="w-1 bg-primary-container/20 h-1/4"></div>
-                <div className="w-1 bg-primary-container/30 h-1/2"></div>
-                <div className="w-1 bg-primary-container/50 h-3/4"></div>
-                <div className="w-1 bg-primary-container/70 h-1/3"></div>
-                <div className="w-1 bg-primary-container h-full"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* NVDA */}
-        <div className="glass-panel p-5 rounded-xl border-l-4 border-primary-container">
-          <div className="flex justify-between items-start mb-2">
-            <div>
-              <p className="text-slate-400 text-xs font-bold uppercase tracking-tight">NVIDIA Corp.</p>
-              <h3 className="text-lg font-extrabold">NVDA</h3>
-            </div>
-            <span className="px-2 py-1 bg-primary-container/10 text-primary-container rounded-full text-[10px] font-bold">+0.8%</span>
-          </div>
-          <div className="flex items-end justify-between">
-            <span className="text-2xl font-bold tracking-tighter">$875.28</span>
-            <div className="h-8 w-20 flex items-end">
-              <div className="flex items-end space-x-0.5 h-full w-full">
-                <div className="w-1 bg-primary-container/20 h-1/3"></div>
-                <div className="w-1 bg-primary-container/40 h-1/2"></div>
-                <div className="w-1 bg-primary-container/60 h-2/3"></div>
-                <div className="w-1 bg-primary-container/80 h-3/4"></div>
-                <div className="w-1 bg-primary-container h-full"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Layout: Area Chart & Watchlist */}
-      <div className="grid grid-cols-10 gap-8">
-        {/* Portfolio Area Chart (70%) */}
-        <div className="col-span-7 glass-panel rounded-xl p-8 relative overflow-hidden">
-          <div className="flex justify-between items-center mb-8">
-            <div>
-              <h2 className="text-xl font-semibold tracking-tight">Portafoglio</h2>
-              <p className="text-slate-400 text-sm">Panoramica asset complessiva</p>
-            </div>
-            <div className="flex space-x-2 bg-surface-container-lowest p-1 rounded-full border border-white/5">
-              {['1G', '1S', '1M', '3M', '1A'].map(tf => (
-                <button 
-                  key={tf}
-                  onClick={() => setTimeframe(tf)}
-                  className={`px-4 py-1.5 text-xs font-bold rounded-full transition-colors ${timeframe === tf ? 'bg-primary-container text-[#00390e]' : 'text-slate-400 hover:text-on-surface'}`}
-                >
-                  {tf}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="relative h-[400px] w-full">
-            {/* Simulated Area Chart */}
-            <div className="absolute inset-0 flex items-end">
-              <svg className="w-full h-full" preserveAspectRatio="none" viewBox="0 0 1000 400">
-                <defs>
-                  <linearGradient id="chartGradient" x1="0%" x2="0%" y1="0%" y2="100%">
-                    <stop offset="0%" style={{ stopColor: "#0df259", stopOpacity: 0.2 }}></stop>
-                    <stop offset="100%" style={{ stopColor: "#0df259", stopOpacity: 0 }}></stop>
-                  </linearGradient>
-                </defs>
-                <path d="M0,350 Q100,340 200,360 T400,320 T600,300 T800,220 T1000,180 L1000,400 L0,400 Z" fill="url(#chartGradient)"></path>
-                <path d="M0,350 Q100,340 200,360 T400,320 T600,300 T800,220 T1000,180" fill="none" stroke="#0df259" strokeWidth="3"></path>
-              </svg>
-            </div>
-
-            {/* Grid Lines */}
-            <div className="absolute inset-0 grid grid-rows-4 pointer-events-none">
-              <div className="border-b border-white/5 w-full"></div>
-              <div className="border-b border-white/5 w-full"></div>
-              <div className="border-b border-white/5 w-full"></div>
-              <div className="border-b border-white/5 w-full"></div>
-            </div>
-
-            {/* Data Cursor */}
-            <div className="absolute left-[80%] top-[45%] flex flex-col items-center">
-              <div className="w-[2px] h-[220px] bg-primary-container/30"></div>
-              <div className="absolute -top-12 bg-primary-container text-[#00390e] px-3 py-1 rounded-lg font-bold shadow-lg text-sm">
-                $124,592.40
-              </div>
-              <div className="w-3 h-3 rounded-full bg-primary-container border-2 border-white absolute top-[-6px]"></div>
-            </div>
-          </div>
-
-          <div className="flex justify-between mt-6 px-2 text-slate-500 text-xs font-bold uppercase">
-            <span>01 Gen</span>
-            <span>08 Gen</span>
-            <span>15 Gen</span>
-            <span>22 Gen</span>
-            <span>31 Gen</span>
-          </div>
-        </div>
-
-        {/* Watchlist Quick View (30%) */}
-        <div className="col-span-3 glass-panel rounded-xl p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-lg font-bold tracking-tight">La tua Watchlist</h2>
-            <button 
-              className="material-symbols-outlined text-slate-500 hover:text-on-surface"
-              onClick={() => alert("Impostazioni Watchlist")}
-            >
-              more_vert
-            </button>
-          </div>
-
-          <div className="space-y-5">
-            {watchlist.map(item => (
-              <div key={item.sym} className="flex justify-between items-center group cursor-pointer">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center font-bold text-xs">
-                    {item.icon}
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-extrabold group-hover:text-primary-container transition-colors">{item.sym}</h4>
-                    <p className="text-[10px] text-slate-500">{item.name}</p>
-                  </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+          {featuredItems.map((item) => (
+            <div key={item.symbol} className="rounded-3xl border border-outline-variant/15 bg-surface-container p-5 shadow-sm shadow-black/5">
+              <div className="flex items-start justify-between gap-4 mb-4">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.3em] text-on-surface-variant">{item.exchange}</p>
+                  <h2 className="text-xl font-semibold text-on-surface mt-2">{item.symbol}</h2>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm font-bold">{item.px}</p>
-                  <span className={`text-[10px] font-bold ${item.up ? 'text-primary-container' : 'text-tertiary-container'}`}>
-                    {item.chg}
-                  </span>
+                <span className="text-xs text-on-surface-variant">
+                  {item.updatedAt ? new Date(item.updatedAt).toLocaleDateString('it-IT') : '—'}
+                </span>
+              </div>
+
+              <div className="flex items-end justify-between gap-4">
+                <div>
+                  <p className="text-3xl font-semibold text-on-surface">{item.price}</p>
+                  <p className="text-xs text-on-surface-variant mt-2">Ultimo prezzo</p>
                 </div>
               </div>
-            ))}
-            {watchlist.length === 0 && (
-              <div className="text-center py-4 text-slate-500 text-sm">
-                Nessun titolo in watchlist.
+            </div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-[2fr_1fr] gap-6">
+          <section className="rounded-3xl border border-outline-variant/15 bg-surface-container p-6">
+            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
+              <div>
+                <p className="text-xs uppercase tracking-[0.25em] text-on-surface-variant">Prezzo storico</p>
+                <h2 className="text-2xl font-semibold text-on-surface">{selectedSymbol || 'Titolo selezionato'}</h2>
               </div>
-            )}
-          </div>
+              <div className="flex flex-wrap gap-2">
+                {(instruments || []).slice(0, 4).map((item) => (
+                  <button
+                    key={item.symbol}
+                    onClick={() => setSelectedSymbol(item.symbol)}
+                    className={`rounded-full px-4 py-2 text-sm font-semibold transition ${selectedSymbol === item.symbol ? 'bg-primary-container text-[#00390e]' : 'bg-surface-container-low hover:bg-surface-container-high'}`}
+                  >
+                    {item.symbol}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-          <Link href="/watchlist" className="block text-center w-full mt-8 border border-white/10 rounded-xl py-3 text-sm font-bold text-slate-400 hover:bg-surface-container-high transition-colors">
-            Visualizza Tutti
-          </Link>
+            <div className="min-h-[320px] rounded-3xl bg-surface-container-lowest p-4">
+              {chartLoading ? (
+                <div className="flex h-full items-center justify-center text-slate-500">Caricamento grafico...</div>
+              ) : selectedSeries.length > 1 ? (
+                <div className="relative h-[320px] w-full">
+                  <svg className="absolute inset-0 h-full w-full" viewBox="0 0 1000 360" preserveAspectRatio="none">
+                    <path d={chartPath} fill="none" stroke="#0df259" strokeWidth="3" />
+                  </svg>
+                  <div className="absolute bottom-4 left-6 text-sm text-on-surface-variant">
+                    {selectedSeries[0]?.price && selectedSeries[selectedSeries.length - 1]?.price ? (
+                      <span>{priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)} ({priceChangePct >= 0 ? '+' : ''}{priceChangePct.toFixed(2)}%)</span>
+                    ) : 'Dati non disponibili'}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex h-full items-center justify-center text-slate-500">Dati di prezzo non disponibili.</div>
+              )}
+            </div>
+          </section>
+
+          <section className="rounded-3xl border border-outline-variant/15 bg-surface-container p-6">
+            <div className="flex items-center justify-between gap-4 mb-6">
+              <div>
+                <h2 className="text-xl font-semibold text-on-surface">Watchlist</h2>
+                <p className="text-sm text-on-surface-variant">I tuoi titoli monitorati</p>
+              </div>
+              <Link href="/watchlist" className="text-sm font-semibold text-primary-container">Visualizza</Link>
+            </div>
+
+            <div className="space-y-3">
+              {watchlist.length > 0 ? (
+                watchlist.map((item) => (
+                  <div key={item.sym} className="rounded-3xl border border-outline-variant/10 bg-surface-container-low p-4 flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-semibold text-white">{item.sym}</p>
+                      <p className="text-xs text-on-surface-variant">{item.name}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold">{item.px}</p>
+                      <p className="text-[11px] text-on-surface-variant mt-1">{item.chg}</p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-3xl border border-outline-variant/10 bg-surface-container-low p-7 text-center text-slate-500">
+                  Nessun titolo in watchlist.
+                </div>
+              )}
+            </div>
+          </section>
         </div>
-      </div>
 
-      {/* Bottom Row: Bento Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        {/* Totale Investito */}
-        <div className="glass-panel p-8 rounded-xl flex flex-col justify-between overflow-hidden relative group">
-          <div className="flex items-center justify-between z-10">
-            <span className="text-slate-400 font-bold uppercase tracking-widest text-xs">Totale Investito</span>
-            <div className="p-2 bg-surface-container rounded-lg">
-              <span className="material-symbols-outlined text-primary-container">account_balance</span>
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="rounded-3xl border border-outline-variant/15 bg-surface-container p-6">
+            <p className="text-[10px] uppercase tracking-[0.28em] text-on-surface-variant mb-4">Totale Investito</p>
+            <p className="text-3xl font-semibold text-on-surface">${portfolioStats.totalInvested.toFixed(2)}</p>
           </div>
-          <div className="mt-8 z-10">
-            <h4 className="text-4xl font-extrabold tracking-tighter mb-2">${portfolioStats.totalInvested.toFixed(2)}</h4>
-            <div className="flex items-center text-primary-container">
-              <span className="material-symbols-outlined text-sm mr-1">trending_up</span>
-              <span className="text-xs font-bold">In base agli investimenti</span>
-            </div>
-          </div>
-          <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:opacity-10 transition-opacity">
-            <span className="material-symbols-outlined text-8xl" style={{ fontVariationSettings: "'opsz' 48" }}>account_balance</span>
-          </div>
-        </div>
-
-        {/* Rendimento Totale */}
-        <div className="glass-panel p-8 rounded-xl flex flex-col justify-between overflow-hidden relative group">
-          <div className="flex items-center justify-between z-10">
-            <span className="text-slate-400 font-bold uppercase tracking-widest text-xs">Rendimento Totale</span>
-            <div className="p-2 bg-surface-container rounded-lg">
-              <span className="material-symbols-outlined text-primary-container">bolt</span>
-            </div>
-          </div>
-          <div className="mt-8 z-10">
-            <h4 className={`text-4xl font-extrabold tracking-tighter mb-2 ${portfolioStats.totalReturnVal >= 0 ? 'text-primary-container' : 'text-tertiary-container'}`}>
+          <div className="rounded-3xl border border-outline-variant/15 bg-surface-container p-6">
+            <p className="text-[10px] uppercase tracking-[0.28em] text-on-surface-variant mb-4">Rendimento Totale</p>
+            <p className={`text-3xl font-semibold ${portfolioStats.totalReturnVal >= 0 ? 'text-primary-container' : 'text-tertiary-container'}`}>
               {portfolioStats.totalReturnVal >= 0 ? '+' : ''}${portfolioStats.totalReturnVal.toFixed(2)}
-            </h4>
-            <div className={`flex items-center ${portfolioStats.totalReturnVal >= 0 ? 'text-primary-container' : 'text-tertiary-container'}`}>
-              <span className="material-symbols-outlined text-sm mr-1">{portfolioStats.totalReturnVal >= 0 ? 'arrow_upward' : 'arrow_downward'}</span>
-              <span className="text-xs font-bold">Sui tuoi asset correnti</span>
-            </div>
+            </p>
           </div>
-          <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:opacity-10 transition-opacity">
-            <span className="material-symbols-outlined text-8xl" style={{ fontVariationSettings: "'opsz' 48" }}>bolt</span>
-          </div>
-        </div>
-
-        {/* Posizioni Aperte */}
-        <div className="glass-panel p-8 rounded-xl flex flex-col justify-between overflow-hidden relative group">
-          <div className="flex items-center justify-between z-10">
-            <span className="text-slate-400 font-bold uppercase tracking-widest text-xs">Posizioni Aperte</span>
-            <div className="p-2 bg-surface-container rounded-lg">
-              <span className="material-symbols-outlined text-primary-container">layers</span>
-            </div>
-          </div>
-          <div className="mt-8 z-10">
-            <h4 className="text-4xl font-extrabold tracking-tighter mb-2">{portfolioStats.openPositions}</h4>
-            <div className="flex items-center text-slate-400">
-              <span className="material-symbols-outlined text-sm mr-1">info</span>
-              <span className="text-xs font-bold">Asset tracciati</span>
-            </div>
-          </div>
-          <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:opacity-10 transition-opacity">
-            <span className="material-symbols-outlined text-8xl" style={{ fontVariationSettings: "'opsz' 48" }}>layers</span>
+          <div className="rounded-3xl border border-outline-variant/15 bg-surface-container p-6">
+            <p className="text-[10px] uppercase tracking-[0.28em] text-on-surface-variant mb-4">Posizioni Aperte</p>
+            <p className="text-3xl font-semibold text-on-surface">{portfolioStats.openPositions}</p>
           </div>
         </div>
       </div>

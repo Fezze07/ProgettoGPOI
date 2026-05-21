@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import GPOPageShell from "@/core/components/GPOPageShell";
 import { supabase } from "@/core/supabase/supabase";
+import { getLatestPrices } from "@/features/markets/services/stockService";
 
 export const dynamic = "force-dynamic";
 
@@ -32,19 +33,37 @@ function WatchlistPageContent() {
           .order("added_at", { ascending: false });
 
         if (!error && data && data.length > 0) {
-          const symbols = data.map(w => w.symbol);
-          const { data: prices } = await supabase.from('latest_crypto_prices').select('*').in('symbol', symbols);
-          
+          const symbols = data.map((w) => w.symbol);
+          const priceRows = await getLatestPrices(symbols);
           const priceMap = {};
-          if (prices) {
-            prices.forEach(p => { priceMap[p.symbol] = p; });
-          }
+          const historyMap = {};
 
-          const enriched = data.map(w => ({
-            ...w,
-            current_price: priceMap[w.symbol]?.price || null,
-            percent_change: priceMap[w.symbol]?.percent_change_24h || null
-          }));
+          priceRows.forEach((row) => {
+            if (!priceMap[row.symbol]) {
+              priceMap[row.symbol] = row;
+            }
+            if (!historyMap[row.symbol]) {
+              historyMap[row.symbol] = [];
+            }
+            historyMap[row.symbol].push(row);
+          });
+
+          const enriched = data.map((w) => {
+            const latest = priceMap[w.symbol] || {};
+            const history = historyMap[w.symbol] || [];
+            const previous = history[1];
+            const percentChange = previous && latest.price != null
+              ? ((Number(latest.price) - Number(previous.price)) / Number(previous.price)) * 100
+              : null;
+
+            return {
+              ...w,
+              current_price: latest.price || null,
+              percent_change: percentChange,
+              updated_at: latest.price_date || null,
+            };
+          });
+
           setWatchlist(enriched);
         } else {
           setWatchlist([]);
@@ -59,19 +78,18 @@ function WatchlistPageContent() {
     init();
   }, [initialQuery]);
 
-  const displayList = watchlist.map(w => {
+  const displayList = watchlist.map((w) => {
     const px = w.current_price ? `$${Number(w.current_price).toFixed(2)}` : '-';
     const chgNum = w.percent_change || 0;
     const chgStr = w.percent_change !== null ? `${chgNum >= 0 ? '+' : ''}${Number(chgNum).toFixed(2)}%` : '-';
-    
-    return { 
-      sym: w.symbol, 
-      name: w.symbol, 
-      icon: w.symbol.substring(0, 2).toUpperCase(), 
-      px: px, 
-      chg: chgStr, 
-      up: chgNum >= 0, 
-      sector: 'Crypto' 
+    return {
+      sym: w.symbol,
+      name: w.symbol,
+      icon: w.symbol.substring(0, 2).toUpperCase(),
+      px,
+      chg: chgStr,
+      up: chgNum >= 0,
+      sector: 'Crypto',
     };
   });
 
@@ -111,26 +129,20 @@ function WatchlistPageContent() {
 
   return (
     <GPOPageShell>
-      {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div className="space-y-1">
-          <div className="flex items-center gap-3">
-            <span className="material-symbols-outlined text-primary-container text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-            <h2 className="text-4xl font-extrabold tracking-tight text-on-surface">La tua Watchlist</h2>
-          </div>
-          <p className="text-on-surface-variant text-lg font-light">Monitora i tuoi titoli preferiti in tempo reale</p>
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
+        <div>
+          <h2 className="text-4xl font-extrabold tracking-tight text-on-surface">La tua Watchlist</h2>
+          <p className="text-on-surface-variant text-lg font-light">Monitora i tuoi titoli preferiti con dati reali.</p>
         </div>
-        <button 
-          className="bg-primary-container text-on-primary font-bold px-6 py-3 rounded-full flex items-center gap-2 hover:shadow-[0_0_20px_rgba(13,242,89,0.3)] transition-all active:scale-95 group"
+        <button
+          className="rounded-full bg-primary-container px-6 py-3 text-sm font-semibold text-[#00390e] transition hover:shadow-lg"
           onClick={() => searchInputRef.current?.focus()}
         >
-          <span className="material-symbols-outlined group-hover:rotate-90 transition-transform">add</span>
-          + Aggiungi Titolo
+          Aggiungi Titolo
         </button>
       </div>
 
-      {/* Search & Filter Controls */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center relative">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center relative mb-8">
         <div className="lg:col-span-7 relative z-20">
           <input
             ref={searchInputRef}
@@ -145,7 +157,11 @@ function WatchlistPageContent() {
           {searchResults.length > 0 && (
             <ul className="absolute top-14 left-0 w-full glass-panel rounded-xl mt-2 overflow-hidden shadow-2xl z-50">
               {searchResults.map((r) => (
-                <li key={r.symbol} className="px-6 py-3 hover:bg-surface-bright/40 cursor-pointer flex justify-between items-center" onClick={() => addToWatchlist(r.symbol)}>
+                <li
+                  key={r.symbol}
+                  className="px-6 py-3 hover:bg-surface-bright/40 cursor-pointer flex justify-between items-center"
+                  onClick={() => addToWatchlist(r.symbol)}
+                >
                   <div>
                     <strong className="text-primary-container">{r.symbol}</strong>
                     <span className="text-slate-400 ml-2 text-xs">{r.name}</span>
@@ -157,85 +173,76 @@ function WatchlistPageContent() {
           )}
         </div>
         <div className="lg:col-span-5 flex items-center justify-end gap-2 overflow-x-auto pb-2 lg:pb-0">
-          {["Tutti", "Azioni", "ETF", "Crypto"].map(f => (
-            <button 
-              key={f}
-              onClick={() => setActiveFilter(f)}
-              className={`px-6 py-2 rounded-full font-medium transition-all ${activeFilter === f ? 'bg-primary-container/10 text-primary-container font-bold border border-primary-container/20' : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/30'}`}
+          {["Tutti", "Azioni", "ETF", "Crypto"].map((filter) => (
+            <button
+              key={filter}
+              onClick={() => setActiveFilter(filter)}
+              className={`px-6 py-2 rounded-full text-sm font-medium transition ${activeFilter === filter ? 'bg-primary-container/10 text-primary-container border border-primary-container/20' : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/30'}`}
             >
-              {f}
+              {filter}
             </button>
           ))}
         </div>
       </div>
 
       {!user && (
-        <div className="glass-panel p-6 rounded-2xl border border-primary-container/20 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden mb-8">
-          <div className="absolute -right-10 -bottom-10 w-48 h-48 bg-primary-container/5 rounded-full blur-3xl"></div>
-          <div className="flex items-center gap-6 relative z-10">
-            <div className="w-14 h-14 rounded-full bg-primary-container/10 flex items-center justify-center text-primary-container">
-              <span className="material-symbols-outlined text-3xl">lock</span>
-            </div>
+        <div className="rounded-3xl border border-outline-variant/10 bg-surface-container p-6 mb-8">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
             <div>
-              <h4 className="text-xl font-bold text-on-surface">Accedi per salvare la tua watchlist</h4>
-              <p className="text-on-surface-variant">Sincronizza i tuoi asset preferiti su tutti i tuoi dispositivi e ricevi avvisi di prezzo.</p>
+              <h4 className="text-xl font-semibold text-on-surface">Accedi per salvare la tua watchlist</h4>
+              <p className="text-on-surface-variant">Sincronizza i tuoi asset preferiti su tutti i tuoi dispositivi.</p>
             </div>
-          </div>
-          <div className="flex items-center gap-3 relative z-10 w-full md:w-auto">
-            <Link href="/login" className="flex-1 md:flex-none px-8 py-3 bg-primary-container text-on-primary text-center font-bold rounded-full hover:shadow-lg transition-all">Accedi</Link>
+            <Link href="/login" className="rounded-full bg-primary-container px-6 py-3 text-sm font-semibold text-[#00390e]">Accedi</Link>
           </div>
         </div>
       )}
 
       {loading && <p className="animate-pulse text-slate-500">Caricamento...</p>}
 
-      {/* Watchlist Table Section */}
       {!loading && (
-        <div className="surface-container-low rounded-2xl overflow-hidden border border-outline-variant/5">
+        <div className="rounded-3xl border border-outline-variant/10 bg-surface-container overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="min-w-full text-left text-sm text-on-surface">
               <thead>
-                <tr className="bg-surface-container-high/50 text-on-surface-variant text-[10px] uppercase tracking-widest font-bold">
+                <tr className="border-b border-outline-variant/10 bg-surface-container-high/50 text-on-surface-variant text-[10px] uppercase tracking-[0.25em] font-semibold">
                   <th className="px-6 py-4">Asset</th>
                   <th className="px-6 py-4">Settore</th>
                   <th className="px-6 py-4">Prezzo</th>
                   <th className="px-6 py-4">Variazione</th>
-                  <th className="px-6 py-4">Trend (7G)</th>
-                  <th className="px-6 py-4 w-10"></th>
+                  <th className="px-6 py-4">Trend</th>
+                  <th className="px-6 py-4" />
                 </tr>
               </thead>
-              <tbody className="divide-y-0 text-sm">
-                {displayList.map(item => (
-                  <tr key={item.sym} className="group hover:bg-surface-bright/40 transition-all cursor-pointer">
+              <tbody>
+                {displayList.map((item) => (
+                  <tr key={item.sym} className="border-b border-outline-variant/10 hover:bg-surface-container-high transition-colors">
                     <td className="px-6 py-4 flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-surface-container flex items-center justify-center p-2 border border-outline-variant/10 font-bold text-xs">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-surface-container-lowest text-xs font-semibold text-on-surface">
                         {item.icon}
                       </div>
                       <div>
-                        <div className="text-primary-container font-extrabold text-lg leading-tight">{item.sym}</div>
+                        <div className="font-semibold text-on-surface">{item.sym}</div>
                         <div className="text-xs text-on-surface-variant">{item.name}</div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="px-3 py-1 rounded-full bg-surface-variant/30 text-[10px] font-bold text-on-surface-variant uppercase tracking-tighter">{item.sector}</span>
+                      <span className="rounded-full bg-surface-variant/30 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-on-surface-variant">{item.sector}</span>
                     </td>
-                    <td className="px-6 py-4 font-mono font-bold text-on-surface">{item.px}</td>
+                    <td className="px-6 py-4 font-mono font-semibold">{item.px}</td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${item.up ? 'bg-primary-container/10 text-primary-container' : 'bg-tertiary-container/10 text-tertiary-container'}`}>
-                        <span className="material-symbols-outlined text-sm">{item.up ? 'arrow_drop_up' : 'arrow_drop_down'}</span> {item.chg}
+                      <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[10px] font-semibold ${item.up ? 'bg-primary-container/10 text-primary-container' : 'bg-tertiary-container/10 text-tertiary-container'}`}>
+                        <span className="material-symbols-outlined text-sm">{item.up ? 'arrow_drop_up' : 'arrow_drop_down'}</span>
+                        {item.chg}
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="w-24 h-10 flex items-end gap-0.5">
-                        <div className={`flex-1 ${item.up ? 'bg-primary-container/20' : 'bg-tertiary-container/80'} h-4 rounded-t-sm`}></div>
-                        <div className={`flex-1 ${item.up ? 'bg-primary-container/30' : 'bg-tertiary-container/60'} h-6 rounded-t-sm`}></div>
-                        <div className={`flex-1 ${item.up ? 'bg-primary-container/40' : 'bg-tertiary-container/40'} h-5 rounded-t-sm`}></div>
-                        <div className={`flex-1 ${item.up ? 'bg-primary-container/60' : 'bg-tertiary-container/30'} h-8 rounded-t-sm`}></div>
-                        <div className={`flex-1 ${item.up ? 'bg-primary-container/80' : 'bg-tertiary-container/20'} h-7 rounded-t-sm`}></div>
-                        <div className={`flex-1 ${item.up ? 'bg-primary-container' : 'bg-tertiary-container/10'} h-10 rounded-t-sm`}></div>
+                      <div className="flex items-end gap-1 h-10">
+                        <span className={`block h-2 w-6 rounded-full ${item.up ? 'bg-primary-container' : 'bg-tertiary-container'}`} />
+                        <span className={`block h-3 w-6 rounded-full ${item.up ? 'bg-primary-container/80' : 'bg-tertiary-container/80'}`} />
+                        <span className={`block h-4 w-6 rounded-full ${item.up ? 'bg-primary-container/60' : 'bg-tertiary-container/60'}`} />
                       </div>
                     </td>
-                    <td className="px-6 py-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <td className="px-6 py-4 text-right">
                       <button className="text-on-surface-variant hover:text-tertiary-container" onClick={(e) => { e.stopPropagation(); removeFromWatchlist(item.sym); }}>
                         <span className="material-symbols-outlined">close</span>
                       </button>
@@ -244,7 +251,7 @@ function WatchlistPageContent() {
                 ))}
                 {displayList.length === 0 && (
                   <tr>
-                    <td colSpan="6" className="text-center py-10 text-slate-500">Nessun titolo in watchlist.</td>
+                    <td colSpan="6" className="px-6 py-10 text-center text-slate-500">Nessun titolo in watchlist.</td>
                   </tr>
                 )}
               </tbody>
@@ -261,5 +268,5 @@ export default function WatchlistPage() {
     <Suspense fallback={<div className="p-8 text-center text-on-surface-variant">Caricamento watchlist...</div>}>
       <WatchlistPageContent />
     </Suspense>
-  )
+  );
 }
