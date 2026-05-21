@@ -27,21 +27,6 @@ export const loginSchema = z.object({
   password: z.string().min(1, { message: 'La password è obbligatoria.' }),
 })
 
-export const forgotPasswordSchema = z.object({
-  email: emailSchema,
-})
-
-export const resetPasswordSchema = z
-  .object({
-    token: z.string().min(20, { message: 'Token non valido.' }),
-    password: passwordSchema,
-    confirmPassword: z.string(),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    path: ['confirmPassword'],
-    message: 'Le password devono coincidere.',
-  })
-
 export const profileUpdateSchema = z.object({
   fullName: z.string().min(2).max(100).optional().transform((value) => (value ? sanitizeString(value) : value)),
   password: passwordSchema.optional(),

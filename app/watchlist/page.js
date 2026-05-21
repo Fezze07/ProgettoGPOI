@@ -1,12 +1,13 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import GPOPageShell from "@/core/components/GPOPageShell";
 import { supabase } from "@/core/supabase/supabase";
 
+export const dynamic = "force-dynamic";
 
-export default function WatchlistPage() {
+function WatchlistPageContent() {
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get("query") || "";
 
@@ -253,4 +254,12 @@ export default function WatchlistPage() {
       )}
     </GPOPageShell>
   );
+}
+
+export default function WatchlistPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-on-surface-variant">Caricamento watchlist...</div>}>
+      <WatchlistPageContent />
+    </Suspense>
+  )
 }

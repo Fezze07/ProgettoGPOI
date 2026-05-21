@@ -46,6 +46,10 @@ Copia il file `.env.example` se presente o crea un `.env.local` con almeno:
 NEXT_PUBLIC_SUPABASE_URL=https://<your-project>.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key>
 SUPABASE_SERVICE_ROLE_KEY=<service-role-key> # usata dal server, NON esporre
+ALPHA_VANTAGE_API=<your-alpha-vantage-key>
+DATABASE_URL=postgres://<user>:<password>@<host>:<port>/<database>
+COLLECT_SYMBOLS=BTC,ETH,BNB
+COLLECT_CRON=*/15 * * * *
 ```
 
 > ⚠️ NON committare le chiavi nell'albero git.
@@ -58,7 +62,35 @@ npm run dev
 
 ---
 
-## 🗄️ Schema database
+## Integrazione Crypto via Alpha Vantage
+
+Questo progetto supporta il recupero dei prezzi crypto in background usando Alpha Vantage.
+
+### Come funziona
+- `worker/services/cryptoProviders/alphaVantage.js` chiama l'endpoint `CURRENCY_EXCHANGE_RATE`
+- I dati vengono salvati in `crypto_price_history`
+- La view `latest_crypto_prices` espone l'ultimo prezzo per ogni asset
+- Le pagine `app/watchlist/page.js` e `features/portfolio/portfolio.server.js` leggono i prezzi da `latest_crypto_prices`
+
+### Avviare il worker in locale
+```bash
+npm run worker
+```
+
+Per eseguire una raccolta istantanea una sola volta:
+```bash
+npm run worker -- --once
+```
+
+### Variabili di configurazione utili
+- `ALPHA_VANTAGE_API` — chiave API Alpha Vantage
+- `DATABASE_URL` — connessione PostgreSQL per il worker
+- `COLLECT_SYMBOLS` — lista symbol separati da virgola (es. `BTC,ETH,BNB`)
+- `COLLECT_CRON` — espressione cron per la raccolta pianificata
+
+---
+
+## �🗄️ Schema database
 
 Il file principale dello schema è [supabase/schema.sql](supabase/schema.sql).
 Applicalo sul tuo database Supabase (SQL Editor) o tramite CLI/`psql`.

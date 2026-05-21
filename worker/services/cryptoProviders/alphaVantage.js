@@ -30,16 +30,19 @@ async function fetchTicker(symbol) {
     throw new Error(`Invalid response from Alpha Vantage: ${JSON.stringify(data)}`);
   }
 
-  const price = exchangeRateData["5. Exchange Rate"];
+  const price = Number(exchangeRateData["5. Exchange Rate"] || 0);
+  const capturedAt = exchangeRateData["6. Last Refreshed"]
+    ? new Date(exchangeRateData["6. Last Refreshed"]).toISOString()
+    : new Date().toISOString();
 
   return {
     provider: 'alphavantage',
     symbol: symbol.toUpperCase(),
-    price: price ? Number(price) : null,
+    price: Number.isFinite(price) ? price : null,
     market_cap: null, // Not available in this endpoint
     volume_24h: null, // Not available in this endpoint
     percent_change_24h: null, // Not available in this endpoint
-    captured_at: new Date().toISOString(),
+    captured_at: capturedAt,
   };
 }
 
