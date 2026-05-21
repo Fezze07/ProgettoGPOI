@@ -83,7 +83,7 @@ export default function Home() {
             };
           })
         );
-        setPrices(priceMap);
+        setPrices(prev => ({ ...prev, ...priceMap }));
       }
     }
     init();

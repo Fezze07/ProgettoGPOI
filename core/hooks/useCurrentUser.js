@@ -1,8 +1,12 @@
 "use client";
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useContext } from 'react'
 import fetchWithRefresh from '@/core/utils/fetchWithRefresh'
+import { CurrentUserContext } from '@/core/contexts/CurrentUserContext'
 
 export default function useCurrentUser() {
+  const ctx = useContext(CurrentUserContext)
+  if (ctx) return ctx
+
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
 

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { verifyAccessToken } from '@/features/auth/utils/authTokens.server'
 import { ApiError } from '@/core/utils/errors.server'
 import { supabaseServer } from '@/core/supabase/supabaseServer.server'
+import { getCache, setCache } from '@/core/utils/cache.server'
 
 const AUTH_HEADER = 'authorization'
 
@@ -35,6 +36,10 @@ export const getAuthenticatedUser = async (request) => {
     throw new ApiError(401, 'Token di accesso scaduto o non valido')
   }
 
+  const cacheKey = `user:${payload.sub}`
+  const cached = getCache(cacheKey)
+  if (cached) return cached
+
   const { data: user, error } = await supabaseServer
     .from('users')
     .select('id, email, full_name, role')
@@ -43,6 +48,12 @@ export const getAuthenticatedUser = async (request) => {
 
   if (error || !user) {
     throw new ApiError(401, 'Utente non trovato o non autorizzato')
+  }
+
+  try {
+    setCache(cacheKey, user, 300) // cache utente per 5 minuti
+  } catch (e) {
+    // ignore cache errors
   }
 
   return user

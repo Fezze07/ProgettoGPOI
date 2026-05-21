@@ -12,6 +12,13 @@ export default function PortfolioPage() {
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState("holdings");
   const { user: currentUser } = useCurrentUser()
+  const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false)
+  const [newPortfolioName, setNewPortfolioName] = useState('')
+  const [newPortfolioAddress, setNewPortfolioAddress] = useState('')
+  const [newPortfolioChain, setNewPortfolioChain] = useState('')
+
+  const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false)
+  const [transactionForm, setTransactionForm] = useState({ wallet_id: '', symbol: '', type: 'trade', amount: '', price: '' })
 
   useEffect(() => {
     async function init() {
@@ -38,20 +45,29 @@ export default function PortfolioPage() {
     init();
   }, [currentUser]);
 
-  const handleCreatePortfolio = async () => {
+  // Apri modal per creare un nuovo portfolio
+  const openCreatePortfolioModal = () => {
+    setNewPortfolioName('')
+    setNewPortfolioAddress('')
+    setNewPortfolioChain('')
+    setIsPortfolioModalOpen(true)
+  }
+
+  const handleCreatePortfolioSubmit = async (e) => {
+    e.preventDefault()
     if (!user) {
-      alert('Devi effettuare il login per creare un portfolio.');
-      return;
+      alert('Devi effettuare il login per creare un portfolio.')
+      return
     }
 
-    const name = window.prompt('Nome portfolio (es. Crypto Long Term):', 'Nuovo Portfolio')
-    if (!name) return
+    const name = newPortfolioName?.trim()
+    if (!name) return alert('Inserisci il nome del portfolio')
 
     try {
       const res = await fetchWithRefresh('/api/private/portfolio', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name, address: newPortfolioAddress || undefined, chain: newPortfolioChain || undefined }),
       })
 
       if (!res.ok) {
@@ -60,6 +76,7 @@ export default function PortfolioPage() {
         return
       }
 
+      setIsPortfolioModalOpen(false)
       // ricarica dati
       const portfolioRes = await fetchWithRefresh('/api/private/portfolio', { method: 'GET' })
       if (portfolioRes.ok) {
@@ -71,6 +88,51 @@ export default function PortfolioPage() {
     } catch (e) {
       console.error('create portfolio error', e)
       alert('Errore nella creazione del portfolio')
+    }
+  }
+
+  const handleOpenTransactionModal = () => {
+    setTransactionForm({ wallet_id: portfolios[0]?.id || '', symbol: '', type: 'trade', amount: '', price: '' })
+    setIsTransactionModalOpen(true)
+  }
+
+  const handleTransactionFormChange = (field, value) => {
+    setTransactionForm(prev => ({ ...prev, [field]: value }))
+  }
+
+  const handleAddTransactionSubmit = async (e) => {
+    e.preventDefault()
+    if (!user) return alert('Effettua il login per aggiungere transazioni')
+
+    const { wallet_id, symbol, type, amount, price } = transactionForm
+    if (!symbol || !amount) return alert('Inserisci simbolo e quantità')
+
+    try {
+      const res = await fetchWithRefresh('/api/private/portfolio/transactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallet_id: wallet_id || portfolios[0]?.id, symbol: symbol.trim().toUpperCase(), type: type || 'trade', amount: parseFloat(amount), price: price ? parseFloat(price) : null }),
+      })
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        alert(err?.message || "Errore nell'aggiunta della transazione")
+        return
+      }
+
+      setIsTransactionModalOpen(false)
+      setTransactionForm({ wallet_id: '', symbol: '', type: 'trade', amount: '', price: '' })
+
+      const portfolioRes = await fetchWithRefresh('/api/private/portfolio', { method: 'GET' })
+      if (portfolioRes.ok) {
+        const portfolioData = await portfolioRes.json()
+        setPortfolios(portfolioData.portfolios || [])
+        setHoldings(portfolioData.holdings || [])
+        setTransactions(portfolioData.transactions || [])
+      }
+    } catch (e) {
+      console.error('add transaction error', e)
+      alert("Errore nell'aggiunta della transazione")
     }
   }
 
@@ -105,7 +167,7 @@ export default function PortfolioPage() {
           </div>
           <h2 className="text-2xl font-semibold mb-2">Nessun portfolio creato</h2>
           <p className="text-slate-400 mb-6">Crea il primo wallet per iniziare a tracciare il tuo capitale.</p>
-          <button onClick={handleCreatePortfolio} className="rounded-full bg-primary-container px-6 py-3 text-sm font-semibold text-[#00390e]">Crea Portfolio</button>
+          <button onClick={openCreatePortfolioModal} className="rounded-full bg-primary-container px-6 py-3 text-sm font-semibold text-[#00390e]">Crea Portfolio</button>
         </div>
       ) : (
         <>
@@ -134,19 +196,26 @@ export default function PortfolioPage() {
           </section>
 
           <section className="mb-8">
-            <div className="flex flex-wrap items-center gap-3 bg-surface-container-lowest rounded-full p-1 border border-outline-variant/10 w-fit">
-              <button
-                onClick={() => setActiveTab('holdings')}
-                className={`rounded-full px-6 py-2 text-xs font-semibold transition ${activeTab === 'holdings' ? 'bg-primary-container text-[#00390e]' : 'text-on-surface-variant hover:text-on-surface'}`}
-              >
-                Posizioni
-              </button>
-              <button
-                onClick={() => setActiveTab('transactions')}
-                className={`rounded-full px-6 py-2 text-xs font-semibold transition ${activeTab === 'transactions' ? 'bg-primary-container text-[#00390e]' : 'text-on-surface-variant hover:text-on-surface'}`}
-              >
-                Transazioni
-              </button>
+            <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center gap-3 bg-surface-container-lowest rounded-full p-1 border border-outline-variant/10 w-fit">
+                <button
+                  onClick={() => setActiveTab('holdings')}
+                  className={`rounded-full px-6 py-2 text-xs font-semibold transition ${activeTab === 'holdings' ? 'bg-primary-container text-[#00390e]' : 'text-on-surface-variant hover:text-on-surface'}`}
+                >
+                  Posizioni
+                </button>
+                <button
+                  onClick={() => setActiveTab('transactions')}
+                  className={`rounded-full px-6 py-2 text-xs font-semibold transition ${activeTab === 'transactions' ? 'bg-primary-container text-[#00390e]' : 'text-on-surface-variant hover:text-on-surface'}`}
+                >
+                  Transazioni
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button onClick={handleOpenTransactionModal} className="rounded-full px-4 py-2 text-xs font-semibold border border-outline-variant/10 hover:shadow">Aggiungi Transazione</button>
+                <button onClick={openCreatePortfolioModal} className="rounded-full px-4 py-2 text-xs font-semibold bg-primary-container text-[#00390e]">Nuovo Portfolio</button>
+              </div>
             </div>
           </section>
 
@@ -215,7 +284,7 @@ export default function PortfolioPage() {
                       <td className="px-6 py-4 text-on-surface-variant text-xs">{new Date(t.executed_at).toLocaleDateString('it-IT')}</td>
                       <td className="px-6 py-4 font-semibold text-on-surface">{t.symbol}</td>
                       <td className="px-6 py-4">
-                        <span className={`rounded-full px-2 py-1 text-[10px] font-semibold uppercase ${t.transaction_type === 'buy' ? 'bg-primary-container/10 text-primary-container' : 'bg-tertiary-container/10 text-tertiary-container'}`}>
+                        <span className={`rounded-full px-2 py-1 text-[10px] font-semibold uppercase ${t.transaction_type === 'trade' ? 'bg-primary-container/10 text-primary-container' : 'bg-tertiary-container/10 text-tertiary-container'}`}>
                           {t.transaction_type}
                         </span>
                       </td>
@@ -233,6 +302,67 @@ export default function PortfolioPage() {
             )}
           </section>
         </>
+      )}
+      {/* Portfolio Modal */}
+      {isPortfolioModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm z-40" onClick={() => setIsPortfolioModalOpen(false)} />
+          <div className="relative z-50 w-full max-w-md p-4">
+            <form onSubmit={handleCreatePortfolioSubmit} className="bg-surface-container p-6 rounded-2xl border border-outline-variant/10 shadow-2xl">
+              <h3 className="text-lg font-semibold mb-4">Crea nuovo Portfolio</h3>
+              <label className="text-sm text-on-surface-variant">Nome</label>
+              <input required value={newPortfolioName} onChange={(e) => setNewPortfolioName(e.target.value)} className="w-full mt-2 mb-3 rounded-lg border border-outline-variant/10 p-2 bg-transparent" />
+              <label className="text-sm text-on-surface-variant">Indirizzo (opzionale)</label>
+              <input value={newPortfolioAddress} onChange={(e) => setNewPortfolioAddress(e.target.value)} className="w-full mt-2 mb-3 rounded-lg border border-outline-variant/10 p-2 bg-transparent" />
+              <label className="text-sm text-on-surface-variant">Chain (opzionale)</label>
+              <input value={newPortfolioChain} onChange={(e) => setNewPortfolioChain(e.target.value)} className="w-full mt-2 mb-4 rounded-lg border border-outline-variant/10 p-2 bg-transparent" />
+              <div className="flex justify-end gap-3">
+                <button type="button" onClick={() => setIsPortfolioModalOpen(false)} className="px-4 py-2 rounded-md border border-outline-variant/10">Annulla</button>
+                <button type="submit" className="px-4 py-2 rounded-md bg-primary-container text-[#00390e] font-semibold">Crea</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Transaction Modal */}
+      {isTransactionModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm z-40" onClick={() => setIsTransactionModalOpen(false)} />
+          <div className="relative z-50 w-full max-w-md p-4">
+            <form onSubmit={handleAddTransactionSubmit} className="bg-surface-container p-6 rounded-2xl border border-outline-variant/10 shadow-2xl">
+              <h3 className="text-lg font-semibold mb-4">Aggiungi Transazione</h3>
+
+              <label className="text-sm text-on-surface-variant">Portfolio</label>
+              <select value={transactionForm.wallet_id} onChange={e => handleTransactionFormChange('wallet_id', e.target.value)} className="w-full mt-2 mb-3 rounded-lg border border-outline-variant/10 p-2 bg-transparent">
+                {portfolios.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+
+              <label className="text-sm text-on-surface-variant">Simbolo</label>
+              <input required value={transactionForm.symbol} onChange={e => handleTransactionFormChange('symbol', e.target.value)} className="w-full mt-2 mb-3 rounded-lg border border-outline-variant/10 p-2 bg-transparent" />
+
+              <label className="text-sm text-on-surface-variant">Tipo</label>
+              <select value={transactionForm.type} onChange={e => handleTransactionFormChange('type', e.target.value)} className="w-full mt-2 mb-3 rounded-lg border border-outline-variant/10 p-2 bg-transparent">
+                <option value="trade">Trade</option>
+                <option value="deposit">Deposit</option>
+                <option value="withdrawal">Withdrawal</option>
+              </select>
+
+              <label className="text-sm text-on-surface-variant">Quantità</label>
+              <input required type="number" step="any" value={transactionForm.amount} onChange={e => handleTransactionFormChange('amount', e.target.value)} className="w-full mt-2 mb-3 rounded-lg border border-outline-variant/10 p-2 bg-transparent" />
+
+              <label className="text-sm text-on-surface-variant">Prezzo (opzionale)</label>
+              <input type="number" step="any" value={transactionForm.price} onChange={e => handleTransactionFormChange('price', e.target.value)} className="w-full mt-2 mb-4 rounded-lg border border-outline-variant/10 p-2 bg-transparent" />
+
+              <div className="flex justify-end gap-3">
+                <button type="button" onClick={() => setIsTransactionModalOpen(false)} className="px-4 py-2 rounded-md border border-outline-variant/10">Annulla</button>
+                <button type="submit" className="px-4 py-2 rounded-md bg-primary-container text-[#00390e] font-semibold">Aggiungi</button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </GPOIPageShell>
   );

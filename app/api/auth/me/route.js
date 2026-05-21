@@ -5,6 +5,7 @@ import { supabaseServer } from '@/core/supabase/supabaseServer.server'
 import { buildJsonResponse } from '@/core/utils/response.server'
 import { handleApiError } from '@/core/utils/errors.server'
 import { hashPassword } from '@/features/auth/utils/authTokens.server'
+import { setCache } from '@/core/utils/cache.server'
 
 
 export async function GET(request) {
@@ -50,6 +51,12 @@ export async function PATCH(request) {
 
     if (error || !updatedUser) {
       throw new Error('Impossibile aggiornare il profilo')
+    }
+
+    try {
+      setCache(`user:${updatedUser.id}`, updatedUser, 300)
+    } catch (e) {
+      // ignore cache errors
     }
 
     return buildJsonResponse({ user: updatedUser, message: 'Profilo aggiornato.' }, 200)

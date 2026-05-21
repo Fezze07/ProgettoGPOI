@@ -4,6 +4,7 @@ import { getUserPortfolioData } from '@/features/portfolio/portfolio.server'
 import { buildJsonResponse } from '@/core/utils/response.server'
 import { handleApiError } from '@/core/utils/errors.server'
 import { supabaseServer } from '@/core/supabase/supabaseServer.server'
+import { delCache } from '@/core/utils/cache.server'
 
 export async function GET(request) {
   try {
@@ -38,6 +39,12 @@ export async function POST(request) {
       .single()
 
     if (error) throw error
+
+    try {
+      delCache(`portfolio:${user.id}`)
+    } catch (e) {
+      // ignore cache errors
+    }
 
     return buildJsonResponse({ wallet: data }, 201)
   } catch (error) {

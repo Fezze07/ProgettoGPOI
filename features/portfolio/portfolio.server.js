@@ -1,4 +1,5 @@
 import { supabaseServer } from '@/core/supabase/supabaseServer.server'
+import { getCache, setCache } from '@/core/utils/cache.server'
 
 /**
  * Recupera tutti i dati correlati al portfolio di un utente adattandosi
@@ -7,6 +8,10 @@ import { supabaseServer } from '@/core/supabase/supabaseServer.server'
  */
 export async function getUserPortfolioData(userId) {
   try {
+    const cacheKey = `portfolio:${userId}`
+    const cached = getCache(cacheKey)
+    if (cached) return cached
+
     const { data: wallets, error: walletsError } = await supabaseServer.from('wallets').select('*').eq('user_id', userId)
     if (walletsError) throw walletsError
 
@@ -92,11 +97,19 @@ export async function getUserPortfolioData(userId) {
       }
     })
 
-    return {
+    const result = {
       portfolios,
       holdings,
       transactions: txsMapped,
     }
+
+    try {
+      setCache(cacheKey, result, 30) // cache portfolio per 30s
+    } catch (e) {
+      // ignore cache errors
+    }
+
+    return result
   } catch (error) {
     console.error('getUserPortfolioData error', error)
     throw new Error('Impossibile recuperare i dati del portfolio.')
