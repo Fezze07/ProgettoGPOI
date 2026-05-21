@@ -1,104 +1,105 @@
 # 🚀 Progetto GPO – Finance Dashboard
 
-**Stack:** Next.js 16 · Supabase · Vercel · Recharts
+**Stack:** Next.js 16 · Supabase · Vercel · Recharts · Tailwind CSS
 
-Un'applicazione di monitoraggio finanziario serverless, deployata su [progettogpo.serverfede.eu](https://progettogpo.serverfede.eu).
-
----
-
-## 🏗️ Architettura
-
-```
-ProgettoGPOI/
-├── app/
-│   ├── layout.js          # Root layout + metadata SEO
-│   ├── page.js            # Dashboard principale (mercati)
-│   ├── watchlist/         # Pagina watchlist utente
-│   └── portfolio/         # Pagina portfolio e transazioni
-├── components/
-│   ├── Header/            # Navbar sticky
-│   ├── StockCard/         # Card titolo azionario
-│   ├── Chart/             # StockChart (Recharts)
-│   └── WatchlistPanel/    # Widget watchlist per dashboard
-├── hooks/
-│   └── useStockData.js    # Polling dati da Supabase
-├── services/
-│   └── stockService.js    # Query Supabase (instruments, watchlist, history)
-├── utils/
-│   └── supabase.js        # Client Supabase (browser)
-├── constants/
-│   └── config.js          # Costanti globali (symbol default, interval polling)
-└── styles/                # CSS Modules + token CSS globali
-```
+Un cruscotto finanziario per monitorare mercati, watchlist e portfolio.
 
 ---
 
-## ⚙️ Setup Locale
+## 🏗️ Struttura del repository (essenziale)
+
+- `app/` – pagine Next.js (dashboard, watchlist, portfolio, api routes)
+	- `app/api/` – API route (autenticazione, endpoint privati)
+	- `app/portfolio/`, `app/watchlist/`, `app/markets/` – view client
+- `core/` – componenti condivisi, client/server Supabase e utilità
+	- `core/supabase/supabase.js` – client anonimo (browser)
+	- `core/supabase/supabaseServer.server.js` – client service-role (server)
+	- `core/utils/` – middleware, error handling, response helpers
+- `features/` – feature-oriented code
+	- `features/portfolio/portfolio.server.js` – aggregazione dati portfolio (server)
+	- `features/markets/services/stockService.js` – query supabase per strumenti e prezzi
+	- `features/markets/hooks/useStockData.js` – hook client per polling strumenti
+- `supabase/` – file SQL e viste
+	- `supabase/schema.sql` – schema DB principale (tabelle + view)
+- `worker/` – job di raccolta prezzi e servizi di background
+- `styles/` – fogli globali e variabili CSS
+- `package.json`, `next.config.js`, `tailwind.config.js`, ecc.
+
+---
+
+## ⚙️ Setup locale
 
 ### Prerequisiti
-- **Node.js 20+** (consigliato via `nvm`)
-- Account **Supabase** (progetto già configurato)
+- `Node.js` 20+ (consigliato)
+- Account e progetto Supabase
 
-### 1. Clona il repo
+### 1) Clona e installa
 ```bash
 git clone https://github.com/Fezze07/ProgettoGPOI
 cd ProgettoGPOI
-```
-
-### 2. Installa le dipendenze
-```bash
 npm install
 ```
 
-### 3. Configura le variabili d'ambiente
-Crea il file `.env` root con:
+### 2) Variabili d'ambiente
+Copia il file `.env.example` se presente o crea un `.env.local` con almeno:
 ```env
-NEXT_PUBLIC_SUPABASE_URL=https://ylfsbkptdighxtitinux.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<la tua chiave anon>
+NEXT_PUBLIC_SUPABASE_URL=https://<your-project>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key>
+SUPABASE_SERVICE_ROLE_KEY=<service-role-key> # usata dal server, NON esporre
 ```
 
-> ⚠️ **Non committare mai `.env` su GitHub.** Il file è già in `.gitignore`.
+> ⚠️ NON committare le chiavi nell'albero git.
 
-### 4. Avvia il dev server
+### 3) Avvia in sviluppo
 ```bash
 npm run dev
-# → http://localhost:3000
+# → http://localhost:5003 (il progetto usa la porta 5003 in `package.json`)
 ```
 
 ---
 
-## 🗄️ Database (Supabase)
+## 🗄️ Schema database
 
-Schema PostgreSQL con le seguenti tabelle:
+Il file principale dello schema è [supabase/schema.sql](supabase/schema.sql).
+Applicalo sul tuo database Supabase (SQL Editor) o tramite CLI/`psql`.
 
-| Tabella | Descrizione |
-|---|---|
-| `profiles` | Profili utente (estende `auth.users`) |
-| `instruments` | Anagrafica titoli (stock, ETF, crypto, forex) |
-| `watchlists` | Titoli monitorati dagli utenti |
-| `portfolios` | Portfolio degli utenti |
-| `holdings` | Posizioni aperte per portfolio |
-| `transactions` | Storico buy/sell/dividend |
-| `price_cache` | Cache prezzi storici (per ridurre chiamate API) |
+Tabelle e view principali create in `supabase/schema.sql`:
 
-Tutte le tabelle hanno **Row Level Security (RLS)** abilitata.
+- `users` — profili locali
+- `auth_refresh_tokens` — refresh token di sessione
+- `wallets` — wallet/portafogli degli utenti
+- `crypto_assets` — anagrafica asset crittografici
+- `crypto_price_history` — storico prezzi raw
+- `latest_crypto_prices` (VIEW) — ultimo prezzo per asset
+- `transactions` — transazioni collegate ai wallet
+- `instruments` — anagrafica titoli (azioni, ETF, crypto, forex)
+- `price_cache` — cache prezzi storici per symbol
+- `watchlists` — titoli salvati dagli utenti
+
+Nota: lo script contiene istruzioni `DROP TABLE IF EXISTS` per pulire tabelle durante l'applicazione; usalo con cautela su DB di produzione.
+
+---
+
+## 🔧 Consigli per debug rapido
+
+- Endpoint API autenticazione/server: `app/api/*` e `core/utils/authMiddleware.server.js`
+- Portfolio server aggregation: [features/portfolio/portfolio.server.js](features/portfolio/portfolio.server.js)
+- Query strumenti/watchlist: [features/markets/services/stockService.js](features/markets/services/stockService.js)
+- Hook client per polling: [features/markets/hooks/useStockData.js](features/markets/hooks/useStockData.js)
+- Supabase clients: [core/supabase/supabase.js](core/supabase/supabase.js) (browser) e [core/supabase/supabaseServer.server.js](core/supabase/supabaseServer.server.js) (server)
+
+Se vedi errori tipo `PGRST205: Could not find the table 'public.instruments'`, significa che lo schema non è stato applicato sul database: applica `supabase/schema.sql` come indicato sopra.
+
+---
 
 ## ☁️ Deploy (Vercel)
 
-Il progetto è collegato a Vercel tramite la repo GitHub.
+Imposta le env vars su Vercel:
 
-- **Root Directory:** lasciata vuota (il progetto ora è nella root del repository)
-- **Build Command:** `npm run build`
-- **Output:** `.next`
-- **Env Vars su Vercel:** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY` (solo se necessario per funzioni server-side; nondiffondere pubblicamente)
+
+Build command: `npm run build` — Output: `.next`
 
 ---
-
-## 🤝 Contribuire
-
-1. Crea sempre un branch personale: `git checkout -b feature/nome-modifica`
-2. Fai le modifiche e testa in locale
-3. `git push origin feature/nome-modifica`
-4. Apri una Pull Request su GitHub
-
-> ❌ **Non fare mai push diretto su `main`.**

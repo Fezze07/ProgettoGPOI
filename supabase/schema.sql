@@ -1,9 +1,18 @@
--- Schema SQL per Progetto GPOI: tabelle principali e indici
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+-- Pulizia tabelle esistenti (ordinate per dipendenza)
+DROP VIEW IF EXISTS latest_crypto_prices CASCADE;
+DROP TABLE IF EXISTS transactions CASCADE;
+DROP TABLE IF EXISTS crypto_price_history CASCADE;
+DROP TABLE IF EXISTS crypto_assets CASCADE;
+DROP TABLE IF EXISTS wallets CASCADE;
+DROP TABLE IF EXISTS auth_refresh_tokens CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
 
 -- USERS
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  full_name VARCHAR(320) NOT NULL,
   email VARCHAR(320) NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
   role TEXT NOT NULL DEFAULT 'user',
@@ -12,6 +21,20 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- AUTH REFRESH TOKENS
+CREATE TABLE IF NOT EXISTS auth_refresh_tokens (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  token_hash TEXT NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  revoked BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  last_used_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_auth_refresh_tokens_user_id ON auth_refresh_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_auth_refresh_tokens_token_hash ON auth_refresh_tokens(token_hash);
 
 -- WALLETS
 CREATE TABLE IF NOT EXISTS wallets (
@@ -39,33 +62,15 @@ CREATE TABLE IF NOT EXISTS crypto_assets (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- TRANSACTIONS
-CREATE TABLE IF NOT EXISTS transactions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  wallet_id UUID NOT NULL REFERENCES wallets(id) ON DELETE CASCADE,
-  asset_id UUID REFERENCES crypto_assets(id),
-  tx_hash TEXT,
-  type TEXT NOT NULL CHECK (type IN ('deposit','withdrawal','trade')),
-  amount NUMERIC(36,18) NOT NULL,
-  fee NUMERIC(36,18) DEFAULT 0,
-  price_at_execution NUMERIC(36,18),
-  status TEXT NOT NULL CHECK (status IN ('pending','confirmed','failed')),
-  blockchain_timestamp TIMESTAMPTZ,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS idx_transactions_wallet_time ON transactions (wallet_id, blockchain_timestamp DESC);
-
--- CRYPTO PRICE HISTORY (time-series)
+-- CRYPTO PRICE HISTORY
 CREATE TABLE IF NOT EXISTS crypto_price_history (
   id BIGSERIAL PRIMARY KEY,
-  asset_id UUID REFERENCES crypto_assets(id),
+  asset_id UUID REFERENCES crypto_assets(id) ON DELETE CASCADE,
   provider TEXT NOT NULL,
   symbol TEXT NOT NULL,
-  price NUMERIC(36,18) NOT NULL,
-  market_cap NUMERIC(36,2),
-  volume_24h NUMERIC(36,2),
+  price NUMERIC(38,18) NOT NULL,
+  market_cap NUMERIC(38,2),
+  volume_24h NUMERIC(38,2),
   percent_change_1h REAL,
   percent_change_24h REAL,
   percent_change_7d REAL,
@@ -74,54 +79,75 @@ CREATE TABLE IF NOT EXISTS crypto_price_history (
   UNIQUE (asset_id, provider, symbol, captured_at)
 );
 
+-- Indici ottimizzati per le query temporali sui prezzi
 CREATE INDEX IF NOT EXISTS idx_price_asset_captured ON crypto_price_history (asset_id, captured_at DESC);
 CREATE INDEX IF NOT EXISTS idx_price_symbol_captured ON crypto_price_history (symbol, captured_at DESC);
 
--- NOTE: Per dataset grandi valutare TimescaleDB o partitioning su captured_at (monthly/quarterly)
--- Supabase schema per autenticazione custom e token refresh
-
-create table if not exists users (
-  id uuid primary key default gen_random_uuid(),
-  email text not null unique,
-  full_name text not null,
-  password_hash text not null,
-  role text not null default 'user',
-  is_active boolean not null default true,
-  created_at timestamp with time zone default now(),
-  updated_at timestamp with time zone default now()
+-- TRANSACTIONS
+CREATE TABLE IF NOT EXISTS transactions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  wallet_id UUID NOT NULL REFERENCES wallets(id) ON DELETE CASCADE,
+  asset_id UUID REFERENCES crypto_assets(id) ON DELETE SET NULL,
+  tx_hash TEXT,
+  type TEXT NOT NULL CHECK (type IN ('deposit', 'withdrawal', 'trade')),
+  amount NUMERIC(38,18) NOT NULL,
+  fee NUMERIC(38,18) DEFAULT 0,
+  price_at_execution NUMERIC(38,18),
+  status TEXT NOT NULL CHECK (status IN ('pending', 'confirmed', 'failed')),
+  blockchain_timestamp TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-create table if not exists auth_refresh_tokens (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid references users(id) on delete cascade,
-  token_hash text not null,
-  expires_at timestamp with time zone not null,
-  revoked boolean not null default false,
-  created_at timestamp with time zone default now(),
-  last_used_at timestamp with time zone
-);
+CREATE INDEX IF NOT EXISTS idx_transactions_wallet_time ON transactions (wallet_id, blockchain_timestamp DESC);
 
-create index if not exists idx_auth_refresh_tokens_user_id on auth_refresh_tokens(user_id);
-create index if not exists idx_auth_refresh_tokens_token_hash on auth_refresh_tokens(token_hash);
-
-create table if not exists password_reset_tokens (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid references users(id) on delete cascade,
-  token_hash text not null,
-  expires_at timestamp with time zone not null,
-  used boolean not null default false,
-  created_at timestamp with time zone default now()
-);
-
-create index if not exists idx_password_reset_tokens_user_id on password_reset_tokens(user_id);
-create index if not exists idx_password_reset_tokens_token_hash on password_reset_tokens(token_hash);
-
--- VIEWS
+-- VIEW: Estrae l'ultimo prezzo caricato per ogni asset
 CREATE OR REPLACE VIEW latest_crypto_prices AS
-SELECT DISTINCT ON (symbol)
+SELECT DISTINCT ON (asset_id)
+  asset_id,
   symbol,
   price,
-  percent_change_24h,
   captured_at
 FROM crypto_price_history
-ORDER BY symbol, captured_at DESC;
+ORDER BY asset_id, captured_at DESC;
+
+-- INSTRUMENTS (anagrafica titoli: azioni, ETF, crypto, forex)
+CREATE TABLE IF NOT EXISTS instruments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  symbol TEXT NOT NULL UNIQUE,
+  name TEXT,
+  exchange TEXT,
+  sector TEXT,
+  currency TEXT,
+  metadata JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_instruments_symbol ON instruments(symbol);
+
+-- PRICE CACHE (cache prezzi storici per simbolo)
+CREATE TABLE IF NOT EXISTS price_cache (
+  id BIGSERIAL PRIMARY KEY,
+  symbol TEXT NOT NULL,
+  price NUMERIC(38,18) NOT NULL,
+  price_date TIMESTAMPTZ NOT NULL,
+  provider TEXT,
+  metadata JSONB,
+  inserted_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_price_cache_symbol_date ON price_cache(symbol, price_date DESC);
+
+-- WATCHLISTS (titoli salvati dagli utenti)
+CREATE TABLE IF NOT EXISTS watchlists (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL,
+  symbol TEXT NOT NULL,
+  added_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  metadata JSONB,
+  UNIQUE (user_id, symbol)
+);
+
+CREATE INDEX IF NOT EXISTS idx_watchlists_user ON watchlists(user_id);
+CREATE INDEX IF NOT EXISTS idx_watchlists_symbol ON watchlists(symbol);

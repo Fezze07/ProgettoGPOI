@@ -48,7 +48,8 @@ export const createUser = async ({ fullName, email, password }) => {
   }).select(userSelect).single()
 
   if (error || !data) {
-    throw new ApiError(500, 'Impossibile creare l\'utente.')
+    console.error("Supabase insert error:", error);
+    throw new ApiError(500, error?.message || 'Impossibile creare l\'utente.')
   }
   return data
 }

@@ -10,7 +10,15 @@ export async function getInstruments() {
     .select('*')
     .order('symbol', { ascending: true });
 
-  if (error) throw error;
+  if (error) {
+    // PGRST205 => table not found in PostgREST schema cache
+    if (error?.code === 'PGRST205') {
+      console.warn('getInstruments: table `instruments` not found, returning empty list.')
+      return []
+    }
+    throw error
+  }
+
   return data;
 }
 
@@ -24,7 +32,13 @@ export async function getInstrumentBySymbol(symbol) {
     .eq('symbol', symbol)
     .single();
 
-  if (error) throw error;
+  if (error) {
+    if (error?.code === 'PGRST205') {
+      console.warn('getInstrumentBySymbol: table `instruments` not found.')
+      return null
+    }
+    throw error
+  }
   return data;
 }
 
@@ -38,7 +52,13 @@ export async function getPriceHistory(symbol) {
     .eq('symbol', symbol)
     .order('price_date', { ascending: true });
 
-  if (error) throw error;
+  if (error) {
+    if (error?.code === 'PGRST205') {
+      console.warn('getPriceHistory: table `price_cache` not found.')
+      return []
+    }
+    throw error
+  }
   return data;
 }
 
@@ -56,7 +76,12 @@ export async function getWatchlist() {
       instruments:symbol (*)
     `)
     .eq('user_id', user.id);
-
-  if (error) throw error;
+  if (error) {
+    if (error?.code === 'PGRST205') {
+      console.warn('getWatchlist: table `watchlists` or `instruments` not found.')
+      return []
+    }
+    throw error
+  }
   return data;
 }
