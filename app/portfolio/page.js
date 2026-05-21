@@ -45,22 +45,13 @@ export default function PortfolioPage() {
   }, [])
 
   const totalInvested = holdings.reduce((sum, h) => sum + h.quantity * h.avg_buy_price, 0);
-
-  // Mock data to enrich empty state but demonstrate the new UI 
-  const mockHoldings = [
-    { id: 1, symbol: 'AAPL', name: 'Apple Inc.', qty: 25.00, avg: 175.20, val: 4742.50, return: 8.4, exchange: 'Nasdaq' },
-    { id: 2, symbol: 'MSFT', name: 'Microsoft Corp.', qty: 12.50, avg: 390.10, val: 5112.50, return: 4.9, exchange: 'Nasdaq' },
-    { id: 3, symbol: 'BTC', name: 'Bitcoin', qty: 0.125, avg: 42500.00, val: 8250.00, return: 55.2, exchange: 'Crypto' }
-  ];
-
-  const renderHoldings = holdings.length > 0 
-    ? holdings.map(h => ({
-        id: h.id, symbol: h.symbol, name: h.symbol, qty: h.quantity, avg: h.avg_buy_price, val: h.quantity * h.avg_buy_price, return: 0, exchange: ''
-      }))
-    : mockHoldings;
+  const totalValue = holdings.reduce((sum, h) => sum + h.quantity * (h.current_price || h.avg_buy_price), 0);
+  const totalReturnVal = totalValue - totalInvested;
+  const totalReturnPct = totalInvested > 0 ? (totalReturnVal / totalInvested) * 100 : 0;
 
   return (
     <GPOPageShell>
+
       {/* Header Section */}
       <section className="mb-10">
         <h2 className="text-4xl font-extrabold tracking-tight text-on-surface mb-2">Il tuo Portfolio 💼</h2>
@@ -93,21 +84,24 @@ export default function PortfolioPage() {
               <h3 className="text-2xl font-extrabold truncate">{portfolios[0]?.name}</h3>
             </div>
             <div className="bg-surface-container rounded-xl p-6 transition-all hover:bg-surface-container-high group border-l-4 border-primary-container/30">
-              <p className="text-[11px] font-bold text-on-surface-variant uppercase tracking-widest mb-4">Totale Investito</p>
-              <h3 className="text-2xl font-extrabold text-primary-container">${totalInvested > 0 ? totalInvested.toFixed(2) : '24,850.00'}</h3>
+              <p className="text-[11px] font-bold text-on-surface-variant uppercase tracking-widest mb-4">Valore Attuale</p>
+              <h3 className="text-2xl font-extrabold text-primary-container">${totalValue.toFixed(2)}</h3>
             </div>
             <div className="bg-surface-container rounded-xl p-6 transition-all hover:bg-surface-container-high group">
               <p className="text-[11px] font-bold text-on-surface-variant uppercase tracking-widest mb-4">Rendimento Totale</p>
               <div className="flex items-baseline gap-2">
-                <h3 className="text-2xl font-extrabold text-primary-container">+$2,490.50</h3>
-                <span className="text-xs font-bold text-primary-container flex items-center">
-                  <span className="material-symbols-outlined text-xs">arrow_upward</span> 10.02%
+                <h3 className={`text-2xl font-extrabold ${totalReturnVal >= 0 ? 'text-primary-container' : 'text-tertiary-container'}`}>
+                  {totalReturnVal >= 0 ? '+' : ''}${totalReturnVal.toFixed(2)}
+                </h3>
+                <span className={`text-xs font-bold flex items-center ${totalReturnVal >= 0 ? 'text-primary-container' : 'text-tertiary-container'}`}>
+                  <span className="material-symbols-outlined text-xs">{totalReturnVal >= 0 ? 'arrow_upward' : 'arrow_downward'}</span> {Math.abs(totalReturnPct).toFixed(2)}%
                 </span>
               </div>
             </div>
             <div className="bg-surface-container rounded-xl p-6 transition-all hover:bg-surface-container-high group">
               <p className="text-[11px] font-bold text-on-surface-variant uppercase tracking-widest mb-4">Posizioni Aperte</p>
-              <h3 className="text-2xl font-extrabold">{holdings.length > 0 ? holdings.length : 7}</h3>
+              <h3 className="text-2xl font-extrabold">{holdings.length}</h3>
+
             </div>
           </section>
 
@@ -141,7 +135,11 @@ export default function PortfolioPage() {
                   </tr>
                 </thead>
                 <tbody className="text-sm font-medium">
-                  {renderHoldings.map(h => (
+                  {holdings.map(h => {
+                    const currentPrice = h.current_price || h.avg_buy_price;
+                    const currentValue = h.quantity * currentPrice;
+                    const retPct = ((currentPrice - h.avg_buy_price) / h.avg_buy_price) * 100;
+                    return (
                     <tr key={h.id} className="hover:bg-surface-container transition-colors cursor-pointer group">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
@@ -150,23 +148,24 @@ export default function PortfolioPage() {
                           </div>
                           <div>
                             <p className="font-bold text-primary-container">{h.symbol}</p>
-                            <p className="text-[10px] opacity-50">{h.exchange || h.name}</p>
+                            <p className="text-[10px] opacity-50">{h.exchange || "Crypto"}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">{Number(h.qty).toFixed(4)}</td>
-                      <td className="px-6 py-4 font-mono">${Number(h.avg).toFixed(2)}</td>
-                      <td className="px-6 py-4 font-bold font-mono text-on-surface">${Number(h.val).toFixed(2)}</td>
+                      <td className="px-6 py-4">{Number(h.quantity).toFixed(4)}</td>
+                      <td className="px-6 py-4 font-mono">${Number(h.avg_buy_price).toFixed(2)}</td>
+                      <td className="px-6 py-4 font-bold font-mono text-on-surface">${currentValue.toFixed(2)}</td>
                       <td className="px-6 py-4 text-right">
-                        <span className={`px-2 py-1 rounded-full text-[11px] font-bold ${h.return >= 0 ? 'text-primary-container bg-primary-container/10' : 'text-tertiary-container bg-tertiary-container/10'}`}>
-                          {h.return >= 0 ? '+' : ''}{h.return}%
+                        <span className={`px-2 py-1 rounded-full text-[11px] font-bold ${retPct >= 0 ? 'text-primary-container bg-primary-container/10' : 'text-tertiary-container bg-tertiary-container/10'}`}>
+                          {retPct >= 0 ? '+' : ''}{retPct.toFixed(2)}%
                         </span>
                       </td>
                     </tr>
-                  ))}
+                  )})}
                   {holdings.length === 0 && (
-                     <tr><td colSpan="5" className="text-center py-6 text-slate-500 text-xs">Visibili dati dimostrativi: nessun holding salvato sul cloud.</td></tr>
+                     <tr><td colSpan="5" className="text-center py-6 text-slate-500 text-xs">Nessuna posizione aperta.</td></tr>
                   )}
+
                 </tbody>
               </table>
             )}

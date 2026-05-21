@@ -30,7 +30,24 @@ export default function WatchlistPage() {
           .eq("user_id", user.id)
           .order("added_at", { ascending: false });
 
-        if (!error) setWatchlist(data || []);
+        if (!error && data && data.length > 0) {
+          const symbols = data.map(w => w.symbol);
+          const { data: prices } = await supabase.from('latest_crypto_prices').select('*').in('symbol', symbols);
+          
+          const priceMap = {};
+          if (prices) {
+            prices.forEach(p => { priceMap[p.symbol] = p; });
+          }
+
+          const enriched = data.map(w => ({
+            ...w,
+            current_price: priceMap[w.symbol]?.price || null,
+            percent_change: priceMap[w.symbol]?.percent_change_24h || null
+          }));
+          setWatchlist(enriched);
+        } else {
+          setWatchlist([]);
+        }
       }
       setLoading(false);
 
@@ -41,15 +58,21 @@ export default function WatchlistPage() {
     init();
   }, [initialQuery]);
 
-  const mockWatchlist = [
-    { sym: 'TSLA', name: 'Tesla, Inc.', icon: 'TS', px: '$175.34', chg: '+0.42%', up: true, sector: 'Technology' },
-    { sym: 'AMZN', name: 'Amazon.com', icon: 'AM', px: '$174.42', chg: '-1.20%', up: false, sector: 'Retail' },
-    { sym: 'ETH', name: 'Ethereum', icon: 'ET', px: '$3,842.10', chg: '+4.81%', up: true, sector: 'Crypto' },
-  ];
-
-  const displayList = watchlist.length > 0
-    ? watchlist.map(w => ({ sym: w.symbol, name: w.symbol, icon: w.symbol.substring(0, 2).toUpperCase(), px: '-', chg: '-', up: true, sector: '-' }))
-    : mockWatchlist;
+  const displayList = watchlist.map(w => {
+    const px = w.current_price ? `$${Number(w.current_price).toFixed(2)}` : '-';
+    const chgNum = w.percent_change || 0;
+    const chgStr = w.percent_change !== null ? `${chgNum >= 0 ? '+' : ''}${Number(chgNum).toFixed(2)}%` : '-';
+    
+    return { 
+      sym: w.symbol, 
+      name: w.symbol, 
+      icon: w.symbol.substring(0, 2).toUpperCase(), 
+      px: px, 
+      chg: chgStr, 
+      up: chgNum >= 0, 
+      sector: 'Crypto' 
+    };
+  });
 
   async function handleSearch(e) {
     const term = e.target.value;

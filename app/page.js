@@ -2,12 +2,65 @@
 import GPOPageShell from "@/core/components/GPOPageShell";
 import { useStockData } from "@/features/markets/hooks/useStockData";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 
 export default function Home() {
   const { data: instruments, loading, error } = useStockData();
   const [timeframe, setTimeframe] = useState("1M");
+
+  const [user, setUser] = useState(null);
+  const [portfolioStats, setPortfolioStats] = useState({ totalInvested: 0, totalValue: 0, totalReturnVal: 0, openPositions: 0 });
+  const [watchlist, setWatchlist] = useState([]);
+
+  useEffect(() => {
+    async function init() {
+      const authRes = await fetch('/api/auth/me', { method: 'GET', credentials: 'include' });
+      if (!authRes.ok) return;
+      const authData = await authRes.json();
+      setUser(authData.user);
+
+      if (authData.user) {
+        // Fetch Portfolio
+        const portfolioRes = await fetch('/api/private/portfolio', { method: 'GET', credentials: 'include' });
+        if (portfolioRes.ok) {
+          const { holdings } = await portfolioRes.json();
+          const hList = holdings || [];
+          const tInv = hList.reduce((sum, h) => sum + h.quantity * h.avg_buy_price, 0);
+          const tVal = hList.reduce((sum, h) => sum + h.quantity * (h.current_price || h.avg_buy_price), 0);
+          setPortfolioStats({
+            totalInvested: tInv,
+            totalValue: tVal,
+            totalReturnVal: tVal - tInv,
+            openPositions: hList.length
+          });
+        }
+
+        // Fetch Watchlist
+        const { supabase } = await import("@/core/supabase/supabase");
+        const { data } = await supabase.from("watchlists").select("*").eq("user_id", authData.user.id).order("added_at", { ascending: false }).limit(5);
+        if (data && data.length > 0) {
+          const symbols = data.map(w => w.symbol);
+          const { data: prices } = await supabase.from('latest_crypto_prices').select('*').in('symbol', symbols);
+          const priceMap = {};
+          if (prices) prices.forEach(p => { priceMap[p.symbol] = p; });
+          
+          setWatchlist(data.map(w => {
+            const p = priceMap[w.symbol] || {};
+            return {
+              sym: w.symbol,
+              name: w.symbol,
+              icon: w.symbol.substring(0, 2).toUpperCase(),
+              px: p.price ? `$${Number(p.price).toFixed(2)}` : '-',
+              chg: p.percent_change_24h !== undefined && p.percent_change_24h !== null ? `${p.percent_change_24h >= 0 ? '+' : ''}${Number(p.percent_change_24h).toFixed(2)}%` : '-',
+              up: (p.percent_change_24h || 0) >= 0
+            };
+          }));
+        }
+      }
+    }
+    init();
+  }, []);
 
   return (
     <GPOPageShell>
@@ -183,13 +236,7 @@ export default function Home() {
           </div>
 
           <div className="space-y-5">
-            {[
-              { sym: 'TSLA', name: 'Tesla, Inc.', icon: 'TS', px: '$175.34', chg: '+0.42%', up: true },
-              { sym: 'AMZN', name: 'Amazon.com', icon: 'AM', px: '$174.42', chg: '-1.20%', up: false },
-              { sym: 'ETH', name: 'Ethereum', icon: 'ET', px: '$3,842.10', chg: '+4.81%', up: true },
-              { sym: 'GOOGL', name: 'Alphabet Inc.', icon: 'GO', px: '$142.65', chg: '+0.15%', up: true },
-              { sym: 'META', name: 'Meta Platforms', icon: 'ME', px: '$482.30', chg: '-0.88%', up: false },
-            ].map(item => (
+            {watchlist.map(item => (
               <div key={item.sym} className="flex justify-between items-center group cursor-pointer">
                 <div className="flex items-center space-x-3">
                   <div className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center font-bold text-xs">
@@ -208,6 +255,11 @@ export default function Home() {
                 </div>
               </div>
             ))}
+            {watchlist.length === 0 && (
+              <div className="text-center py-4 text-slate-500 text-sm">
+                Nessun titolo in watchlist.
+              </div>
+            )}
           </div>
 
           <Link href="/watchlist" className="block text-center w-full mt-8 border border-white/10 rounded-xl py-3 text-sm font-bold text-slate-400 hover:bg-surface-container-high transition-colors">
@@ -227,10 +279,10 @@ export default function Home() {
             </div>
           </div>
           <div className="mt-8 z-10">
-            <h4 className="text-4xl font-extrabold tracking-tighter mb-2">$842,500.00</h4>
+            <h4 className="text-4xl font-extrabold tracking-tighter mb-2">${portfolioStats.totalInvested.toFixed(2)}</h4>
             <div className="flex items-center text-primary-container">
               <span className="material-symbols-outlined text-sm mr-1">trending_up</span>
-              <span className="text-xs font-bold">+12.5% dall'ultimo mese</span>
+              <span className="text-xs font-bold">In base agli investimenti</span>
             </div>
           </div>
           <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:opacity-10 transition-opacity">
@@ -238,19 +290,21 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Rendimento Oggi */}
+        {/* Rendimento Totale */}
         <div className="glass-panel p-8 rounded-xl flex flex-col justify-between overflow-hidden relative group">
           <div className="flex items-center justify-between z-10">
-            <span className="text-slate-400 font-bold uppercase tracking-widest text-xs">Rendimento Oggi</span>
+            <span className="text-slate-400 font-bold uppercase tracking-widest text-xs">Rendimento Totale</span>
             <div className="p-2 bg-surface-container rounded-lg">
               <span className="material-symbols-outlined text-primary-container">bolt</span>
             </div>
           </div>
           <div className="mt-8 z-10">
-            <h4 className="text-4xl font-extrabold tracking-tighter mb-2">+$4,210.82</h4>
-            <div className="flex items-center text-primary-container">
-              <span className="material-symbols-outlined text-sm mr-1">arrow_upward</span>
-              <span className="text-xs font-bold">+0.82% nelle ultime 24h</span>
+            <h4 className={`text-4xl font-extrabold tracking-tighter mb-2 ${portfolioStats.totalReturnVal >= 0 ? 'text-primary-container' : 'text-tertiary-container'}`}>
+              {portfolioStats.totalReturnVal >= 0 ? '+' : ''}${portfolioStats.totalReturnVal.toFixed(2)}
+            </h4>
+            <div className={`flex items-center ${portfolioStats.totalReturnVal >= 0 ? 'text-primary-container' : 'text-tertiary-container'}`}>
+              <span className="material-symbols-outlined text-sm mr-1">{portfolioStats.totalReturnVal >= 0 ? 'arrow_upward' : 'arrow_downward'}</span>
+              <span className="text-xs font-bold">Sui tuoi asset correnti</span>
             </div>
           </div>
           <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:opacity-10 transition-opacity">
@@ -267,10 +321,10 @@ export default function Home() {
             </div>
           </div>
           <div className="mt-8 z-10">
-            <h4 className="text-4xl font-extrabold tracking-tighter mb-2">14</h4>
+            <h4 className="text-4xl font-extrabold tracking-tighter mb-2">{portfolioStats.openPositions}</h4>
             <div className="flex items-center text-slate-400">
               <span className="material-symbols-outlined text-sm mr-1">info</span>
-              <span className="text-xs font-bold">12 Long / 2 Short attive</span>
+              <span className="text-xs font-bold">Asset tracciati</span>
             </div>
           </div>
           <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:opacity-10 transition-opacity">

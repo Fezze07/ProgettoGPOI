@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getCookieMaxAge } from './security.server'
 
-
-
 const secureFlag = process.env.NODE_ENV === 'production'
 
 const accessTokenMaxAge = getCookieMaxAge(process.env.JWT_ACCESS_TOKEN_EXPIRES_IN, 60 * 15)

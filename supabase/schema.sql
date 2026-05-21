@@ -115,3 +115,13 @@ create table if not exists password_reset_tokens (
 
 create index if not exists idx_password_reset_tokens_user_id on password_reset_tokens(user_id);
 create index if not exists idx_password_reset_tokens_token_hash on password_reset_tokens(token_hash);
+
+-- VIEWS
+CREATE OR REPLACE VIEW latest_crypto_prices AS
+SELECT DISTINCT ON (symbol)
+  symbol,
+  price,
+  percent_change_24h,
+  captured_at
+FROM crypto_price_history
+ORDER BY symbol, captured_at DESC;

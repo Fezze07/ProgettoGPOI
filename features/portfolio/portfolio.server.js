@@ -16,9 +16,31 @@ export async function getUserPortfolioData(userId) {
     throw new Error('Impossibile recuperare i dati del portfolio.')
   }
 
+  const holdingsList = holdings || [];
+  
+  if (holdingsList.length > 0) {
+    const symbols = [...new Set(holdingsList.map(h => h.symbol))];
+    const { data: prices } = await supabaseServer.from('latest_crypto_prices').select('*').in('symbol', symbols);
+    
+    if (prices) {
+      const priceMap = {};
+      prices.forEach(p => { priceMap[p.symbol] = p; });
+      
+      holdingsList.forEach(h => {
+        if (priceMap[h.symbol]) {
+          h.current_price = priceMap[h.symbol].price;
+          h.percent_change_24h = priceMap[h.symbol].percent_change_24h;
+        } else {
+          h.current_price = h.avg_buy_price; // fallback
+          h.percent_change_24h = 0;
+        }
+      });
+    }
+  }
+
   return {
     portfolios: portfolios || [],
-    holdings: holdings || [],
+    holdings: holdingsList,
     transactions: transactions || [],
   }
 }
