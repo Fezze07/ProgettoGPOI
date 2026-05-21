@@ -1,4 +1,4 @@
-# 🚀 Progetto GPO – Finance Dashboard
+# 🚀 Progetto GPOI – Finance Dashboard
 
 **Stack:** Next.js 16 · Supabase · Vercel · Recharts · Tailwind CSS
 
@@ -104,8 +104,6 @@ Tabelle e view principali create in `supabase/schema.sql`:
 - `crypto_price_history` — storico prezzi raw
 - `latest_crypto_prices` (VIEW) — ultimo prezzo per asset
 - `transactions` — transazioni collegate ai wallet
-- `instruments` — anagrafica titoli (azioni, ETF, crypto, forex)
-- `price_cache` — cache prezzi storici per symbol
 - `watchlists` — titoli salvati dagli utenti
 
 Nota: lo script contiene istruzioni `DROP TABLE IF EXISTS` per pulire tabelle durante l'applicazione; usalo con cautela su DB di produzione.

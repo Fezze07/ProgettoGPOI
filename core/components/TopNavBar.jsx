@@ -2,10 +2,12 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import useCurrentUser from '@/core/hooks/useCurrentUser'
 
 export default function TopNavBar() {
   const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
+  const { user, loading, logout } = useCurrentUser()
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -42,12 +44,32 @@ export default function TopNavBar() {
             <span className="material-symbols-outlined">notifications</span>
           </button>
           
-          <Link href="/login" className="text-slate-300 font-bold text-xs hover:text-[#0df259] transition-colors pr-2">
-            Accedi
-          </Link>
-          <Link href="/register" className="bg-[#0df259] hover:bg-[#6dff7e] text-[#00390e] px-4 py-1.5 rounded-full font-bold text-xs shadow-[0_4px_40px_rgba(13,242,89,0.2)] active:scale-95 transition-all min-w-max">
-            Registrati
-          </Link>
+          {user ? (
+            <div className="flex items-center gap-3">
+              <button
+                onClick={async () => {
+                  try {
+                    await logout()
+                    router.push('/')
+                  } catch (err) {
+                    console.error('Logout error', err)
+                  }
+                }}
+                className="bg-red-600 hover:bg-red-700 text-white px-4 py-1.5 rounded-full font-bold text-xs transition-all"
+              >
+                Logout
+              </button>
+            </div>
+          ) : (
+            <>
+              <Link href="/login" className="text-slate-300 font-bold text-xs hover:text-[#0df259] transition-colors pr-2">
+                Accedi
+              </Link>
+              <Link href="/register" className="bg-[#0df259] hover:bg-[#6dff7e] text-[#00390e] px-4 py-1.5 rounded-full font-bold text-xs shadow-[0_4px_40px_rgba(13,242,89,0.2)] active:scale-95 transition-all min-w-max">
+                Registrati
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </header>

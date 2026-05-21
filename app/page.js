@@ -1,5 +1,7 @@
 ﻿"use client";
-import GPOPageShell from "@/core/components/GPOPageShell";
+import GPOIPageShell from "@/core/components/GPOIPageShell";
+import fetchWithRefresh from '@/core/utils/fetchWithRefresh'
+import useCurrentUser from '@/core/hooks/useCurrentUser'
 import { useStockData } from "@/features/markets/hooks/useStockData";
 import { getLatestPrices, getPriceHistory } from "@/features/markets/services/stockService";
 
@@ -32,64 +34,60 @@ export default function Home() {
     loadChart();
   }, [selectedSymbol]);
 
+  const { user: currentUser } = useCurrentUser()
+
   useEffect(() => {
     async function init() {
-      const authRes = await fetch('/api/auth/me', { method: 'GET', credentials: 'include' });
-      if (!authRes.ok) {
-        return;
+      if (!currentUser) return;
+
+      const portfolioRes = await fetchWithRefresh('/api/private/portfolio', { method: 'GET' });
+      if (portfolioRes.ok) {
+        const { holdings } = await portfolioRes.json();
+        const hList = holdings || [];
+        const tInv = hList.reduce((sum, h) => sum + h.quantity * h.avg_buy_price, 0);
+        const tVal = hList.reduce((sum, h) => sum + h.quantity * (h.current_price || h.avg_buy_price), 0);
+        setPortfolioStats({
+          totalInvested: tInv,
+          totalValue: tVal,
+          totalReturnVal: tVal - tInv,
+          openPositions: hList.length,
+        });
       }
 
-      const authData = await authRes.json();
-      if (authData.user) {
-        const portfolioRes = await fetch('/api/private/portfolio', { method: 'GET', credentials: 'include' });
-        if (portfolioRes.ok) {
-          const { holdings } = await portfolioRes.json();
-          const hList = holdings || [];
-          const tInv = hList.reduce((sum, h) => sum + h.quantity * h.avg_buy_price, 0);
-          const tVal = hList.reduce((sum, h) => sum + h.quantity * (h.current_price || h.avg_buy_price), 0);
-          setPortfolioStats({
-            totalInvested: tInv,
-            totalValue: tVal,
-            totalReturnVal: tVal - tInv,
-            openPositions: hList.length,
-          });
-        }
+      const { supabase } = await import("@/core/supabase/supabase");
+      const { data } = await supabase
+        .from("watchlists")
+        .select("*")
+        .eq("user_id", currentUser.id)
+        .order("added_at", { ascending: false })
+        .limit(5);
 
-        const { supabase } = await import("@/core/supabase/supabase");
-        const { data } = await supabase
-          .from("watchlists")
-          .select("*")
-          .eq("user_id", authData.user.id)
-          .order("added_at", { ascending: false })
-          .limit(5);
+      if (data && data.length > 0) {
+        const symbols = data.map((w) => w.symbol);
+        const latestPrices = await getLatestPrices(symbols);
+        const priceMap = {};
+        latestPrices.forEach((row) => {
+          priceMap[row.symbol] = row;
+        });
 
-        if (data && data.length > 0) {
-          const symbols = data.map((w) => w.symbol);
-          const latestPrices = await getLatestPrices(symbols);
-          const priceMap = {};
-          latestPrices.forEach((row) => {
-            priceMap[row.symbol] = row;
-          });
-
-          setWatchlist(
-            data.map((w) => {
-              const row = priceMap[w.symbol] || {};
-              return {
-                sym: w.symbol,
-                name: w.symbol,
-                icon: w.symbol.substring(0, 2).toUpperCase(),
-                px: row.price != null ? `$${Number(row.price).toFixed(2)}` : '-',
-                chg: row.price_date ? new Date(row.price_date).toLocaleDateString('it-IT') : '-',
-                up: false,
-              };
-            })
-          );
-          setPrices(priceMap);
-        }
+        setWatchlist(
+          data.map((w) => {
+            const row = priceMap[w.symbol] || {};
+            return {
+              sym: w.symbol,
+              name: w.symbol,
+              icon: w.symbol.substring(0, 2).toUpperCase(),
+              px: row.price != null ? `$${Number(row.price).toFixed(2)}` : '-',
+              chg: row.price_date ? new Date(row.price_date).toLocaleDateString('it-IT') : '-',
+              up: false,
+            };
+          })
+        );
+        setPrices(priceMap);
       }
     }
     init();
-  }, []);
+  }, [currentUser]);
 
   useEffect(() => {
     async function loadFeaturedPrices() {
@@ -137,14 +135,13 @@ export default function Home() {
     .join(' ');
 
   return (
-    <GPOPageShell>
+    <GPOIPageShell>
       <div className="grid gap-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <p className="text-sm uppercase tracking-[0.25em] text-on-surface-variant mb-2">Dashboard</p>
             <h1 className="text-4xl font-extrabold tracking-tight text-on-surface">Panoramica</h1>
           </div>
-          <div className="text-sm text-on-surface-variant">Ultimo aggiornamento dati reale da Supabase</div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
@@ -259,6 +256,6 @@ export default function Home() {
           </div>
         </div>
       </div>
-    </GPOPageShell>
+    </GPOIPageShell>
   );
 }

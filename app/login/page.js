@@ -49,8 +49,7 @@ export default function LoginPage() {
             <div className="mb-4 inline-flex items-center justify-center w-14 h-14 rounded-xl bg-surface-container-high border border-outline-variant/20 shadow-inner">
               <span className="material-symbols-outlined text-primary-container text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>insights</span>
             </div>
-            <h1 className="text-on-surface font-extrabold text-3xl tracking-tight mb-2">Bentornato su GPOI</h1>
-            <p className="text-on-surface-variant/60 font-semibold tracking-[0.15em] uppercase text-[11px]">Institutional Terminal</p>
+            <h1 className="text-on-surface font-extrabold text-3xl tracking-tight mb-2">Bentornato su AFSF Management !</h1>
           </div>
 
           {error && <div className="mb-4 text-xs font-bold text-error bg-error-container/20 p-3 rounded-xl border border-error/50">{error}</div>}
@@ -71,7 +70,6 @@ export default function LoginPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between px-1">
                 <label className="block text-on-surface-variant text-[11px] font-bold uppercase tracking-widest" htmlFor="password">Password</label>
-                <Link className="text-[11px] font-bold text-primary-container hover:text-primary-fixed-dim transition-colors duration-200" href="#">Password dimenticata?</Link>
               </div>
               <input
                 className="w-full bg-surface-container-lowest border-none rounded-xl px-5 py-4 text-on-surface placeholder:text-on-surface-variant/30 focus:ring-2 focus:ring-primary-container/40 transition-all duration-300"
@@ -99,14 +97,6 @@ export default function LoginPage() {
           </div>
 
           <div className="absolute -top-12 -right-12 w-32 h-32 bg-primary-container/5 rounded-full blur-3xl pointer-events-none"></div>
-        </div>
-
-        <div className="mt-8 flex items-center justify-between px-2 text-[10px] font-bold text-on-surface-variant/20 uppercase tracking-[0.2em]">
-          <div className="flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-primary-container/40 animate-pulse"></span>
-            Terminal Active
-          </div>
-          <span>v2.4.0 Obsidian</span>
         </div>
       </main>
 

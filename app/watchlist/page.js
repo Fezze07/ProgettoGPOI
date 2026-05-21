@@ -2,8 +2,9 @@
 import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import GPOPageShell from "@/core/components/GPOPageShell";
+import GPOIPageShell from "@/core/components/GPOIPageShell";
 import { supabase } from "@/core/supabase/supabase";
+import useCurrentUser from '@/core/hooks/useCurrentUser'
 import { getLatestPrices } from "@/features/markets/services/stockService";
 
 export const dynamic = "force-dynamic";
@@ -20,10 +21,13 @@ function WatchlistPageContent() {
   const [activeFilter, setActiveFilter] = useState("Tutti");
   const searchInputRef = useRef(null);
 
+  const { user: currentUser, loading: userLoading } = useCurrentUser()
+
   useEffect(() => {
     async function init() {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
+      setLoading(true)
+      const user = currentUser
+      setUser(user)
 
       if (user) {
         const { data, error } = await supabase
@@ -68,15 +72,19 @@ function WatchlistPageContent() {
         } else {
           setWatchlist([]);
         }
+      } else {
+        setWatchlist([])
       }
-      setLoading(false);
 
-      if (initialQuery) {
-        handleSearch({ target: { value: initialQuery } });
-      }
+      setLoading(false);
     }
+
     init();
-  }, [initialQuery]);
+
+    if (initialQuery) {
+      handleSearch({ target: { value: initialQuery } });
+    }
+  }, [initialQuery, currentUser]);
 
   const displayList = watchlist.map((w) => {
     const px = w.current_price ? `$${Number(w.current_price).toFixed(2)}` : '-';
@@ -103,12 +111,17 @@ function WatchlistPageContent() {
     }
 
     const { data } = await supabase
-      .from("instruments")
-      .select("symbol, name, exchange, sector")
+      .from('crypto_assets')
+      .select('symbol, name, metadata')
       .or(`symbol.ilike.%${term}%,name.ilike.%${term}%`)
       .limit(8);
 
-    setSearchResults(data || []);
+    setSearchResults((data || []).map((r) => ({
+      symbol: r.symbol,
+      name: r.name || r.symbol,
+      exchange: (r.metadata && r.metadata.exchange) || 'Crypto',
+      sector: (r.metadata && r.metadata.sector) || 'Crypto',
+    })));
   }
 
   async function addToWatchlist(symbol) {
@@ -128,7 +141,7 @@ function WatchlistPageContent() {
   }
 
   return (
-    <GPOPageShell>
+    <GPOIPageShell>
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
         <div>
           <h2 className="text-4xl font-extrabold tracking-tight text-on-surface">La tua Watchlist</h2>
@@ -259,7 +272,7 @@ function WatchlistPageContent() {
           </div>
         </div>
       )}
-    </GPOPageShell>
+    </GPOIPageShell>
   );
 }
 

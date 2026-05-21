@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getAuthenticatedUser } from '@/core/utils/authMiddleware.server'
+import { getAuthenticatedUser, getAccessTokenFromRequest } from '@/core/utils/authMiddleware.server'
 import { profileUpdateSchema } from '@/features/auth/validators'
 import { supabaseServer } from '@/core/supabase/supabaseServer.server'
 import { buildJsonResponse } from '@/core/utils/response.server'
@@ -9,6 +9,13 @@ import { hashPassword } from '@/features/auth/utils/authTokens.server'
 
 export async function GET(request) {
   try {
+    // If there's no access token at all, return a 200 with null user so
+    // client-side code doesn't try to refresh unnecessarily.
+    const token = getAccessTokenFromRequest(request)
+    if (!token) {
+      return buildJsonResponse({ user: null }, 200)
+    }
+
     const user = await getAuthenticatedUser(request)
     return buildJsonResponse({ user }, 200)
   } catch (error) {

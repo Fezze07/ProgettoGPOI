@@ -1,9 +1,12 @@
 "use client";
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import useCurrentUser from '@/core/hooks/useCurrentUser'
 
 export default function SideNavBar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, loading, logout } = useCurrentUser()
 
   const navItems = [
     { name: 'Dashboard', path: '/', icon: 'dashboard' },
@@ -15,8 +18,8 @@ export default function SideNavBar() {
   return (
     <aside className="fixed left-0 top-0 h-full w-64 flex flex-col py-6 bg-[#0b0e12] border-r border-white/5 z-50 font-manrope antialiased">
       <div className="px-6 mb-10">
-        <h1 className="text-2xl font-extrabold tracking-tighter text-[#0df259]">Progetto GPO</h1>
-        <p className="text-xs text-slate-500 mt-1 uppercase tracking-widest font-bold">Institutional Terminal</p>
+        <h1 className="text-2xl font-extrabold tracking-tighter text-[#0df259]">Progetto GPOI</h1>
+        <p className="text-xs text-slate-500 mt-1 uppercase tracking-widest font-bold">AFSF Management</p>
       </div>
 
       <nav className="flex-1 px-3 space-y-2">
@@ -48,10 +51,27 @@ export default function SideNavBar() {
             Vedi Piani
           </Link>
         </div>
-        <Link className="flex items-center px-3 py-2 text-slate-400 font-medium hover:text-[#e1e2e8] transition-colors" href="/login">
-          <span className="material-symbols-outlined mr-3 text-sm">person</span>
-          <span className="text-sm">Accedi</span>
-        </Link>
+        {user ? (
+          <button
+            onClick={async () => {
+              try {
+                await logout()
+                router.push('/')
+              } catch (err) {
+                console.error('Logout error', err)
+              }
+            }}
+            className="w-full text-left flex items-center px-3 py-2 text-slate-400 font-medium hover:text-[#e1e2e8] transition-colors"
+          >
+            <span className="material-symbols-outlined mr-3 text-sm">logout</span>
+            <span className="text-sm">Logout</span>
+          </button>
+        ) : (
+          <Link className="flex items-center px-3 py-2 text-slate-400 font-medium hover:text-[#e1e2e8] transition-colors" href="/login">
+            <span className="material-symbols-outlined mr-3 text-sm">person</span>
+            <span className="text-sm">Accedi</span>
+          </Link>
+        )}
       </div>
     </aside>
   );

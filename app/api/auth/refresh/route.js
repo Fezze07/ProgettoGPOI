@@ -7,9 +7,10 @@ import { handleApiError } from '@/core/utils/errors.server'
 
 export async function POST(request) {
   try {
-    const refreshToken = getRefreshTokenFromRequest(request)
+    const refreshToken = await getRefreshTokenFromRequest(request)
     if (!refreshToken) {
-      throw new Error('Refresh token mancante')
+      // If there's no refresh token, return 401 without throwing to avoid noisy server errors
+      return NextResponse.json({ success: false, message: 'Refresh token mancante' }, { status: 401 })
     }
     const tokens = await rotateRefreshToken(refreshToken)
     let response = buildJsonResponse({ message: 'Sessione rinnovata.' }, 200)

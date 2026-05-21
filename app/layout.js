@@ -3,7 +3,7 @@ import "../styles/globals.css";
 
 export const metadata = {
   title: "Progetto GPOI - Finance Dashboard",
-  description: "Monitoraggio mercati azionari in tempo reale con Supabase e Vercel",
+  description: "Monitoraggio mercati azionari in tempo reale",
 };
 
 export const viewport = {

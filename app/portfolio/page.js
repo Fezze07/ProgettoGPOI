@@ -1,6 +1,8 @@
 "use client";
 import { useState, useEffect } from "react";
-import GPOPageShell from "@/core/components/GPOPageShell";
+import GPOIPageShell from "@/core/components/GPOIPageShell";
+import fetchWithRefresh from '@/core/utils/fetchWithRefresh'
+import useCurrentUser from '@/core/hooks/useCurrentUser'
 
 export default function PortfolioPage() {
   const [portfolios, setPortfolios] = useState([]);
@@ -9,39 +11,68 @@ export default function PortfolioPage() {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState("holdings");
+  const { user: currentUser } = useCurrentUser()
 
   useEffect(() => {
     async function init() {
       setLoading(true);
-      const authRes = await fetch('/api/auth/me', {
-        method: 'GET',
-        credentials: 'include',
-      });
-
-      if (!authRes.ok) {
+      if (!currentUser) {
         setLoading(false);
         return;
       }
 
-      const authData = await authRes.json();
-      setUser(authData.user);
+      setUser(currentUser);
 
-      if (authData.user) {
-        const portfolioRes = await fetch('/api/private/portfolio', {
-          method: 'GET',
-          credentials: 'include',
-        });
-        if (portfolioRes.ok) {
-          const portfolioData = await portfolioRes.json();
-          setPortfolios(portfolioData.portfolios || []);
-          setHoldings(portfolioData.holdings || []);
-          setTransactions(portfolioData.transactions || []);
-        }
+      const portfolioRes = await fetchWithRefresh('/api/private/portfolio', {
+        method: 'GET',
+      });
+      if (portfolioRes.ok) {
+        const portfolioData = await portfolioRes.json();
+        setPortfolios(portfolioData.portfolios || []);
+        setHoldings(portfolioData.holdings || []);
+        setTransactions(portfolioData.transactions || []);
       }
+
       setLoading(false);
     }
     init();
-  }, []);
+  }, [currentUser]);
+
+  const handleCreatePortfolio = async () => {
+    if (!user) {
+      alert('Devi effettuare il login per creare un portfolio.');
+      return;
+    }
+
+    const name = window.prompt('Nome portfolio (es. Crypto Long Term):', 'Nuovo Portfolio')
+    if (!name) return
+
+    try {
+      const res = await fetchWithRefresh('/api/private/portfolio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      })
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        alert(err?.message || 'Errore nella creazione del portfolio')
+        return
+      }
+
+      // ricarica dati
+      const portfolioRes = await fetchWithRefresh('/api/private/portfolio', { method: 'GET' })
+      if (portfolioRes.ok) {
+        const portfolioData = await portfolioRes.json()
+        setPortfolios(portfolioData.portfolios || [])
+        setHoldings(portfolioData.holdings || [])
+        setTransactions(portfolioData.transactions || [])
+      }
+    } catch (e) {
+      console.error('create portfolio error', e)
+      alert('Errore nella creazione del portfolio')
+    }
+  }
 
   const totalInvested = holdings.reduce((sum, h) => sum + h.quantity * h.avg_buy_price, 0);
   const totalValue = holdings.reduce((sum, h) => sum + h.quantity * (h.current_price || h.avg_buy_price), 0);
@@ -49,7 +80,7 @@ export default function PortfolioPage() {
   const totalReturnPct = totalInvested > 0 ? (totalReturnVal / totalInvested) * 100 : 0;
 
   return (
-    <GPOPageShell>
+    <GPOIPageShell>
       <section className="mb-10">
         <h2 className="text-4xl font-extrabold tracking-tight text-on-surface mb-2">Portfolio Personale</h2>
         <p className="text-on-surface-variant font-medium">Visualizza i tuoi portafogli e le performance correnti.</p>
@@ -74,7 +105,7 @@ export default function PortfolioPage() {
           </div>
           <h2 className="text-2xl font-semibold mb-2">Nessun portfolio creato</h2>
           <p className="text-slate-400 mb-6">Crea il primo wallet per iniziare a tracciare il tuo capitale.</p>
-          <button className="rounded-full bg-primary-container px-6 py-3 text-sm font-semibold text-[#00390e]">Crea Portfolio</button>
+          <button onClick={handleCreatePortfolio} className="rounded-full bg-primary-container px-6 py-3 text-sm font-semibold text-[#00390e]">Crea Portfolio</button>
         </div>
       ) : (
         <>
@@ -203,6 +234,6 @@ export default function PortfolioPage() {
           </section>
         </>
       )}
-    </GPOPageShell>
+    </GPOIPageShell>
   );
 }

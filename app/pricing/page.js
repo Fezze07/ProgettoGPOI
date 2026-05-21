@@ -11,7 +11,7 @@ export default function PricingPage() {
         <div className="flex justify-between items-center px-8 py-4 w-full backdrop-blur-xl bg-opacity-80 bg-gradient-to-b from-[#1d2024] to-transparent">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-[#0df259]" style={{ fontVariationSettings: "'FILL' 1" }}>monitoring</span>
-            <span className="text-xl font-extrabold tracking-tighter text-[#0df259] uppercase">GPO Obsidian</span>
+            <span className="text-xl font-extrabold tracking-tighter text-[#0df259] uppercase">Progetto GPOI</span>
           </div>
           <div className="flex items-center gap-4">
             <span className="material-symbols-outlined text-[#0df259] transition-transform active:scale-95 cursor-pointer">account_circle</span>
@@ -151,7 +151,7 @@ export default function PricingPage() {
       {/* Footer */}
       <footer className="w-full border-t border-[#0df259]/10 bg-[#0b0e12] dark:bg-[#0b0e12]">
         <div className="flex flex-col md:flex-row justify-between items-center px-12 py-8 w-full max-w-5xl mx-auto">
-          <div className="text-lg font-bold text-[#e1e2e8] mb-6 md:mb-0">GPO Obsidian</div>
+          <div className="text-lg font-bold text-[#e1e2e8] mb-6 md:mb-0">AFSF Management</div>
           <div className="flex flex-wrap justify-center gap-6 mb-8 md:mb-0">
             <a className="font-manrope text-[10px] font-bold uppercase tracking-widest text-[#e1e2e8]/40 hover:text-[#0df259] hover:underline transition-all duration-200" href="#">Terms of Service</a>
             <a className="font-manrope text-[10px] font-bold uppercase tracking-widest text-[#e1e2e8]/40 hover:text-[#0df259] hover:underline transition-all duration-200" href="#">Privacy Policy</a>
@@ -159,7 +159,7 @@ export default function PricingPage() {
             <a className="font-manrope text-[10px] font-bold uppercase tracking-widest text-[#e1e2e8]/40 hover:text-[#0df259] hover:underline transition-all duration-200" href="#">Regulatory Status</a>
           </div>
           <div className="font-manrope text-[10px] font-bold uppercase tracking-widest text-[#e1e2e8]/40 text-center">
-             © 2024 GPO Obsidian Institutional. All rights reserved.
+             © 2026 AFSF Management SRL. All rights reserved.
           </div>
         </div>
       </footer>

@@ -7,7 +7,7 @@ import { handleApiError } from '@/core/utils/errors.server'
 
 export async function POST(request) {
   try {
-    const refreshToken = getRefreshTokenFromRequest(request)
+    const refreshToken = await getRefreshTokenFromRequest(request)
     if (refreshToken) {
       await revokeRefreshToken(refreshToken)
     }

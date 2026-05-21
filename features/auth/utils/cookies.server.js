@@ -1,3 +1,5 @@
+import { cookies as nextCookies } from 'next/headers'
+
 export const parseCookie = (cookieHeader) => {
   if (!cookieHeader) return {}
   return cookieHeader.split(';').reduce((acc, fragment) => {
@@ -8,7 +10,16 @@ export const parseCookie = (cookieHeader) => {
   }, {})
 }
 
-export const getRefreshTokenFromRequest = (request) => {
+export const getRefreshTokenFromRequest = async (request) => {
+  try {
+    const store = await nextCookies()
+    const entry = store.get('gp_refresh_token')
+    if (entry && entry.value) return entry.value
+  } catch (e) {
+    // ignore and fallback to header parsing
+  }
+
+  if (!request || !request.headers) return null
   const cookieHeader = request.headers.get('cookie')
   if (!cookieHeader) return null
   const cookies = parseCookie(cookieHeader)

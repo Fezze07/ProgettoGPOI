@@ -39,7 +39,7 @@ export default function StockChart({ data = [], symbol }) {
           />
           <Line
             type="monotone"
-            dataKey="close_price"
+            dataKey="price"
             stroke="#3b82f6"
             strokeWidth={2}
             dot={false}

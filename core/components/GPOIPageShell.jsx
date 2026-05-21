@@ -2,7 +2,7 @@
 import SideNavBar from "./SideNavBar";
 import TopNavBar from "./TopNavBar";
 
-export default function GPOPageShell({ children }) {
+export default function GPOIPageShell({ children }) {
   return (
     <>
         <SideNavBar />

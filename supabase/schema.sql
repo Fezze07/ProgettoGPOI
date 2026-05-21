@@ -111,34 +111,6 @@ SELECT DISTINCT ON (asset_id)
 FROM crypto_price_history
 ORDER BY asset_id, captured_at DESC;
 
--- INSTRUMENTS (anagrafica titoli: azioni, ETF, crypto, forex)
-CREATE TABLE IF NOT EXISTS instruments (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  symbol TEXT NOT NULL UNIQUE,
-  name TEXT,
-  exchange TEXT,
-  sector TEXT,
-  currency TEXT,
-  metadata JSONB,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS idx_instruments_symbol ON instruments(symbol);
-
--- PRICE CACHE (cache prezzi storici per simbolo)
-CREATE TABLE IF NOT EXISTS price_cache (
-  id BIGSERIAL PRIMARY KEY,
-  symbol TEXT NOT NULL,
-  price NUMERIC(38,18) NOT NULL,
-  price_date TIMESTAMPTZ NOT NULL,
-  provider TEXT,
-  metadata JSONB,
-  inserted_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS idx_price_cache_symbol_date ON price_cache(symbol, price_date DESC);
-
 -- WATCHLISTS (titoli salvati dagli utenti)
 CREATE TABLE IF NOT EXISTS watchlists (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

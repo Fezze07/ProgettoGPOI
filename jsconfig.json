@@ -3,9 +3,8 @@
     "baseUrl": ".",
     "paths": {
       "@/core/*": ["core/*"],
-      "@/features/*": ["features/*"],
-      "@/worker/*": ["worker/*"]
+      "@/features/*": ["features/*"]
     }
   },
-  "exclude": ["node_modules", ".next", "worker/node_modules"]
+  "exclude": ["node_modules", ".next"]
 }

@@ -3,7 +3,6 @@ import { verifyAccessToken } from '@/features/auth/utils/authTokens.server'
 import { ApiError } from '@/core/utils/errors.server'
 import { supabaseServer } from '@/core/supabase/supabaseServer.server'
 
-
 const AUTH_HEADER = 'authorization'
 
 const parseBearerToken = (request) => {

@@ -84,7 +84,7 @@ export default function RegisterPage() {
                   <div className="relative group">
                     <input
                       className="w-full bg-surface-container-lowest border border-outline-variant/30 rounded-lg px-4 py-3.5 text-on-surface placeholder:text-on-surface-variant/40 focus:ring-2 focus:ring-primary-container/50 transition-all outline-none"
-                      placeholder="m.rossi@obsidian.com"
+                      placeholder="m.rossi@gmail.com"
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}

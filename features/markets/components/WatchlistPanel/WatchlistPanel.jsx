@@ -2,19 +2,19 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/core/supabase/supabase";
 import { getLatestPrices } from "@/features/markets/services/stockService";
+import useCurrentUser from '@/core/hooks/useCurrentUser'
 
 import styles from "./WatchlistPanel.module.css";
 
 export default function WatchlistPanel() {
   const [items, setItems] = useState([]);
-  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const { user: currentUser, loading: userLoading } = useCurrentUser()
 
   useEffect(() => {
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-
+      setLoading(true)
+      const user = currentUser
       if (user) {
         const { data } = await supabase
           .from("watchlists")
@@ -43,13 +43,15 @@ export default function WatchlistPanel() {
         } else {
           setItems([]);
         }
+      } else {
+        setItems([])
       }
-      setLoading(false);
+      setLoading(false)
     }
-    load();
-  }, []);
+    load()
+  }, [currentUser]);
 
-  if (!user) return null;
+  if (!currentUser && !userLoading) return null;
 
   return (
     <aside className={styles.panel}>
