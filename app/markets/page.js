@@ -38,7 +38,7 @@ export default function MarketsPage() {
       <section className="mb-10">
         <h2 className="text-4xl font-extrabold tracking-tight text-on-surface mb-2">Mercati Globali</h2>
         <p className="text-on-surface-variant font-medium">Dati reali dai mercati.</p>
-      </section>
+      </section>      
 
       <div className="rounded-3xl border border-outline-variant/15 bg-surface-container p-6">
         {loading ? (
