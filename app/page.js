@@ -7,6 +7,7 @@ import { getLatestPrices, getPriceHistory } from "@/features/markets/services/st
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
+import StockChart from "@/features/markets/components/Chart/StockChart";
 
 export default function Home() {
   const { data: instruments } = useStockData();
@@ -16,6 +17,7 @@ export default function Home() {
   const [selectedSymbol, setSelectedSymbol] = useState("");
   const [chartData, setChartData] = useState([]);
   const [chartLoading, setChartLoading] = useState(false);
+  const [chartError, setChartError] = useState(null);
 
   useEffect(() => {
     if (!selectedSymbol && instruments?.length > 0) {
@@ -27,9 +29,21 @@ export default function Home() {
     async function loadChart() {
       if (!selectedSymbol) return;
       setChartLoading(true);
-      const history = await getPriceHistory(selectedSymbol);
-      setChartData(history.slice(-18));
-      setChartLoading(false);
+      setChartError(null);
+      try {
+        const history = await getPriceHistory(selectedSymbol);
+        setChartData(
+          history
+            .slice(-18)
+            .map((row) => ({ ...row, price: Number(row.price) }))
+        );
+      } catch (error) {
+        console.error("Errore nel caricamento della cronologia prezzi:", error);
+        setChartData([]);
+        setChartError(error?.message || "Errore caricamento grafico");
+      } finally {
+        setChartLoading(false);
+      }
     }
     loadChart();
   }, [selectedSymbol]);
@@ -79,7 +93,7 @@ export default function Home() {
               icon: w.symbol.substring(0, 2).toUpperCase(),
               px: row.price != null ? `$${Number(row.price).toFixed(2)}` : '-',
               chg: row.price_date ? new Date(row.price_date).toLocaleDateString('it-IT') : '-',
-              up: false,
+              up: row.price != null,
             };
           })
         );
@@ -190,19 +204,10 @@ export default function Home() {
             <div className="min-h-[320px] rounded-3xl bg-surface-container-lowest p-4">
               {chartLoading ? (
                 <div className="flex h-full items-center justify-center text-slate-500">Caricamento grafico...</div>
-              ) : selectedSeries.length > 1 ? (
-                <div className="relative h-[320px] w-full">
-                  <svg className="absolute inset-0 h-full w-full" viewBox="0 0 1000 360" preserveAspectRatio="none">
-                    <path d={chartPath} fill="none" stroke="#0df259" strokeWidth="3" />
-                  </svg>
-                  <div className="absolute bottom-4 left-6 text-sm text-on-surface-variant">
-                    {selectedSeries[0]?.price && selectedSeries[selectedSeries.length - 1]?.price ? (
-                      <span>{priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)} ({priceChangePct >= 0 ? '+' : ''}{priceChangePct.toFixed(2)}%)</span>
-                    ) : 'Dati non disponibili'}
-                  </div>
-                </div>
+              ) : chartError ? (
+                <div className="flex h-full items-center justify-center text-red-400">{chartError}</div>
               ) : (
-                <div className="flex h-full items-center justify-center text-slate-500">Dati di prezzo non disponibili.</div>
+                <StockChart data={chartData} symbol={selectedSymbol || 'Titolo selezionato'} />
               )}
             </div>
           </section>
@@ -225,7 +230,7 @@ export default function Home() {
                       <p className="text-xs text-on-surface-variant">{item.name}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-semibold">{item.px}</p>
+                      <p className={`text-sm font-semibold ${item.up ? 'text-primary-container' : 'text-tertiary-container'}`}>{item.px}</p>
                       <p className="text-[11px] text-on-surface-variant mt-1">{item.chg}</p>
                     </div>
                   </div>

@@ -3,12 +3,14 @@ import { useState, useEffect } from "react";
 import GPOIPageShell from "@/core/components/GPOIPageShell";
 import fetchWithRefresh from '@/core/utils/fetchWithRefresh'
 import useCurrentUser from '@/core/hooks/useCurrentUser'
+import { useStockData } from '@/features/markets/hooks/useStockData'
 
 export default function PortfolioPage() {
   const [portfolios, setPortfolios] = useState([]);
   const [holdings, setHoldings] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { data: instruments, loading: instrumentsLoading } = useStockData();
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState("holdings");
   const { user: currentUser } = useCurrentUser()
@@ -92,7 +94,7 @@ export default function PortfolioPage() {
   }
 
   const handleOpenTransactionModal = () => {
-    setTransactionForm({ wallet_id: portfolios[0]?.id || '', symbol: '', type: 'trade', amount: '', price: '' })
+    setTransactionForm({ wallet_id: portfolios[0]?.id || '', symbol: instruments?.[0]?.symbol || '', type: 'trade', amount: '', price: '' })
     setIsTransactionModalOpen(true)
   }
 
@@ -341,7 +343,22 @@ export default function PortfolioPage() {
               </select>
 
               <label className="text-sm text-on-surface-variant">Simbolo</label>
-              <input required value={transactionForm.symbol} onChange={e => handleTransactionFormChange('symbol', e.target.value)} className="w-full mt-2 mb-3 rounded-lg border border-outline-variant/10 p-2 bg-transparent" />
+              <select
+                required
+                value={transactionForm.symbol}
+                onChange={e => handleTransactionFormChange('symbol', e.target.value)}
+                className="w-full mt-2 mb-3 rounded-lg border border-outline-variant/10 p-2 bg-transparent"
+              >
+                <option value="" disabled>{instrumentsLoading ? 'Caricamento asset...' : 'Seleziona un asset esistente'}</option>
+                {(instruments || []).map((item) => (
+                  <option key={item.symbol} value={item.symbol}>
+                    {item.symbol} - {item.name || item.symbol}
+                  </option>
+                ))}
+              </select>
+              {!instrumentsLoading && instruments.length === 0 && (
+                <p className="text-xs text-tertiary-container">Nessun asset disponibile. Assicurati che il database contenga crypto esistenti.</p>
+              )}
 
               <label className="text-sm text-on-surface-variant">Tipo</label>
               <select value={transactionForm.type} onChange={e => handleTransactionFormChange('type', e.target.value)} className="w-full mt-2 mb-3 rounded-lg border border-outline-variant/10 p-2 bg-transparent">

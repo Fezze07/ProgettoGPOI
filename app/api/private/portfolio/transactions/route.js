@@ -47,9 +47,7 @@ export async function POST(request) {
       if (asset && asset.id) {
         resolvedAssetId = asset.id
       } else {
-        const { data: newAsset, error: newAssetErr } = await supabaseServer.from('crypto_assets').insert({ symbol: sym }).select().single()
-        if (newAssetErr) throw newAssetErr
-        resolvedAssetId = newAsset.id
+        throw new Error(`Simbolo non valido o non supportato: ${sym}`)
       }
     }
 
@@ -57,6 +55,10 @@ export async function POST(request) {
     let txType = String(type || 'trade').toLowerCase()
     if (txType === 'buy' || txType === 'sell') txType = 'trade'
     if (!['deposit', 'withdrawal', 'trade'].includes(txType)) txType = 'trade'
+
+    if (txType === 'trade' && !resolvedAssetId) {
+      throw new Error('Trade richiede un asset valido selezionato tra quelli esistenti')
+    }
 
     const payload = {
       wallet_id: walletId,

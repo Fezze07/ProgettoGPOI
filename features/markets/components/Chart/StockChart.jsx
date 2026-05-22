@@ -5,7 +5,19 @@ import {
 } from "recharts";
 import styles from "./Chart.module.css";
 
-export default function StockChart({ data = [], symbol }) {
+const formatDate = (value) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value || "");
+  return date.toLocaleDateString("it-IT", { day: "2-digit", month: "short" });
+};
+
+const formatTooltipDate = (value) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value || "");
+  return date.toLocaleDateString("it-IT");
+};
+
+export default function StockChart({ data = [], symbol, height = 300 }) {
   if (!data || data.length === 0) {
     return (
       <div className={styles.empty}>
@@ -17,13 +29,13 @@ export default function StockChart({ data = [], symbol }) {
   return (
     <div className={styles.wrapper}>
       <h3 className={styles.title}>{symbol} — Storico Prezzi</h3>
-      <ResponsiveContainer width="100%" height={300}>
+      <ResponsiveContainer width="100%" height={height}>
         <LineChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
           <XAxis
             dataKey="price_date"
             tick={{ fill: "#64748b", fontSize: 12 }}
-            tickFormatter={(v) => new Date(v).toLocaleDateString("it-IT", { day: "2-digit", month: "short" })}
+            tickFormatter={formatDate}
           />
           <YAxis
             tick={{ fill: "#64748b", fontSize: 12 }}
@@ -35,7 +47,7 @@ export default function StockChart({ data = [], symbol }) {
             contentStyle={{ backgroundColor: "#1e293b", border: "1px solid #334155", borderRadius: "8px" }}
             labelStyle={{ color: "#94a3b8" }}
             formatter={(value) => [`$${Number(value).toFixed(2)}`, "Chiusura"]}
-            labelFormatter={(label) => new Date(label).toLocaleDateString("it-IT")}
+            labelFormatter={formatTooltipDate}
           />
           <Line
             type="monotone"
